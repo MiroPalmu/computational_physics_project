@@ -38,6 +38,11 @@ target_sources(main
     PRIVATE
     main.cpp
     PUBLIC FILE_SET HEADERS FILES
+    idg/einsum.hpp
+    idg/generic_algorithm.hpp
+    idg/sstd.hpp
+    idg/tensor_network.hpp
+    idg/string_manipulation.hpp
 )
 
 add_sycl_to_target(TARGET main)
@@ -47,3 +52,14 @@ target_compile_features(main
     INTERFACE
     cxx_std_26
 )
+
+include(FetchContent)
+FetchContent_Declare(
+    mdspan
+    GIT_REPOSITORY https://github.com/kokkos/mdspan.git
+    GIT_TAG stable
+)
+FetchContent_MakeAvailable(mdspan)
+find_package(mdspan)
+target_link_libraries(main PRIVATE mdspan)
+

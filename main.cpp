@@ -1,6 +1,13 @@
 #include <print>
+#include <vector>
+
+#include <experimental/mdspan>
 
 #include "sycl/sycl.hpp"
+
+#include "idg/einsum.hpp"
+#include "idg/sstd.hpp"
+
 
 int
 main() {
@@ -13,4 +20,15 @@ main() {
         }
         std::println("");
     }
+
+
+    auto buff = std::vector<double>(4, 2);
+    auto mds = idg::sstd::geometric_mdspan<double, 1, 4>(buff.data());
+
+    double out_value;
+    auto out_mds = idg::sstd::geometric_mdspan<double, 0, 4>(&out_value);
+
+    using namespace idg::literals;
+    u8"i,i"_einsum(out_mds, mds, mds);
+    std::println("{}", out_value);
 }
