@@ -33,23 +33,26 @@ If(NOT ACPP_DEBUG_LEVEL)
     endif()
 endif()
 
+# Main executable:
+
 add_executable(main)
 target_sources(main
     PRIVATE
     main.cpp
-    PUBLIC FILE_SET HEADERS FILES
+    PRIVATE FILE_SET HEADERS FILES
     idg/einsum.hpp
     idg/generic_algorithm.hpp
     idg/sstd.hpp
     idg/tensor_network.hpp
     idg/string_manipulation.hpp
+    tensor_buffer.hpp
+    w2_bssn_uniform_grid.hpp
+    ranges.hpp
 )
 
 add_sycl_to_target(TARGET main)
 target_compile_features(main
     PRIVATE
-    cxx_std_26
-    INTERFACE
     cxx_std_26
 )
 
@@ -60,6 +63,29 @@ FetchContent_Declare(
     GIT_TAG stable
 )
 FetchContent_MakeAvailable(mdspan)
-find_package(mdspan)
-target_link_libraries(main PRIVATE mdspan)
+target_link_libraries(main PRIVATE std::mdspan)
 
+
+# Test executables:
+
+add_executable(tensor_buffer)
+target_sources(tensor_buffer
+    PRIVATE
+    test_tensor_buffer.cpp
+    PRIVATE FILE_SET HEADERS FILES
+    idg/einsum.hpp
+    idg/generic_algorithm.hpp
+    idg/sstd.hpp
+    idg/tensor_network.hpp
+    idg/string_manipulation.hpp
+    tensor_buffer.hpp
+    w2_bssn_uniform_grid.hpp
+    ranges.hpp
+)
+
+add_sycl_to_target(TARGET tensor_buffer)
+target_compile_features(tensor_buffer
+    PRIVATE
+    cxx_std_26
+)
+target_link_libraries(tensor_buffer PRIVATE std::mdspan)
