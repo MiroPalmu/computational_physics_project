@@ -4,8 +4,10 @@
 
 #include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <experimental/mdspan>
@@ -45,6 +47,11 @@ class tensor_buffer {
         }
     };
 
+    [[nodiscard]]
+    constexpr std::size_t total_elements(this auto&& self) {
+        return self.Nx_ * self.Ny_ * self.Nz_;
+    }
+
   public:
     [[nodiscard]]
     constexpr explicit tensor_buffer(const std::size_t Nx,
@@ -53,8 +60,7 @@ class tensor_buffer {
         : Nx_{ Nx },
           Ny_{ Ny },
           Nz_{ Nz } {
-        const auto total_elements = Nx_ * Ny_ * Nz_;
-        rn::fill(buffs_, vec(total_elements));
+        rn::fill(buffs_, vec(total_elements()));
     }
 
     [[nodiscard]]
@@ -74,5 +80,22 @@ class tensor_buffer {
                            accessor_policy>(self.buffs_.data(),
                                             {},
                                             accessor_policy{ .buffer_index = grid_offset });
+    }
+
+    [[nodiscard]]
+    constexpr auto operator[](this auto&& self, const grid_index idx) {
+        return self[idx[0], idx[1], idx[2]];
+    }
+
+    template<std::invocable<grid_index, tensor_index<rank>> F>
+    constexpr void for_each_index(this auto&& self, F&& f) {
+        for (const auto tidx : idg::sstd::geometric_index_space<rank, D>()) {
+            for (const auto i : rv::iota(0uz, self.total_elements())) {
+                auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
+                                       (i / self.Nz_) % self.Ny_,
+                                       i % self.Nz_ };
+                std::invoke(std::forward<F>(f), idx, tidx);
+            }
+        }
     }
 };
