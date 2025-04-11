@@ -87,14 +87,24 @@ class tensor_buffer {
         return self[idx[0], idx[1], idx[2]];
     }
 
-    template<std::invocable<grid_index, tensor_index<rank>> F>
+    template<typename F>
+        requires std::invocable<F, grid_index, tensor_index<rank>> or std::invocable<F, grid_index>
     constexpr void for_each_index(this auto&& self, F&& f) {
-        for (const auto tidx : idg::sstd::geometric_index_space<rank, D>()) {
+        if constexpr (std::invocable<F, grid_index>) {
             for (const auto i : rv::iota(0uz, self.total_elements())) {
-                auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
-                                       (i / self.Nz_) % self.Ny_,
-                                       i % self.Nz_ };
-                std::invoke(std::forward<F>(f), idx, tidx);
+                const auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
+                                             (i / self.Nz_) % self.Ny_,
+                                             i % self.Nz_ };
+                std::invoke(std::forward<F>(f), idx);
+            }
+        } else {
+            for (const auto tidx : idg::sstd::geometric_index_space<rank, D>()) {
+                for (const auto i : rv::iota(0uz, self.total_elements())) {
+                    const auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
+                                                 (i / self.Nz_) % self.Ny_,
+                                                 i % self.Nz_ };
+                    std::invoke(std::forward<F>(f), idx, tidx);
+                }
             }
         }
     }

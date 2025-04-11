@@ -29,8 +29,8 @@ main() {
     // writing
     buff.for_each_index([&](const grid_index idx, const tensor_index<2> tidx) {
         const auto [i, j, k] = idx;
-        const auto [x, y] = tidx;
-        buff[idx][tidx] = std::format("[{}, {}, {}] [{}, {}]", i, j, k, x, y);
+        const auto [x, y]    = tidx;
+        buff[idx][tidx]      = std::format("[{}, {}, {}] [{}, {}]", i, j, k, x, y);
     });
 
     // reading const buff
@@ -38,7 +38,17 @@ main() {
 
     buff_const_ref.for_each_index([&](const grid_index idx, const tensor_index<2> tidx) {
         const auto [i, j, k] = idx;
-        const auto [x, y] = tidx;
+        const auto [x, y]    = tidx;
         std::println("[{}, {}, {}] [{}, {}] = {}", i, j, k, x, y, buff[idx][tidx]);
+    });
+
+    buff_const_ref.for_each_index([&](const grid_index idx) {
+        const auto [i, j, k] = idx;
+        std::println("[{}, {}, {}] [0,1] and [1, 1] = {} {}",
+                     i,
+                     j,
+                     k,
+                     buff[idx][0, 1],
+                     buff[idx][1, 1]);
     });
 }
