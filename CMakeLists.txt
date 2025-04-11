@@ -39,6 +39,7 @@ add_executable(main)
 target_sources(main
     PRIVATE
     main.cpp
+    w2_bssn_uniform_grid.cpp
     PRIVATE FILE_SET HEADERS FILES
     idg/einsum.hpp
     idg/generic_algorithm.hpp
@@ -89,3 +90,26 @@ target_compile_features(tensor_buffer
     cxx_std_26
 )
 target_link_libraries(tensor_buffer PRIVATE std::mdspan)
+
+
+add_executable(w2_bssn_uniform_grid)
+target_sources(w2_bssn_uniform_grid
+    PRIVATE
+    test_w2_bssn_uniform_grid.cpp
+    PRIVATE FILE_SET HEADERS FILES
+    idg/einsum.hpp
+    idg/generic_algorithm.hpp
+    idg/sstd.hpp
+    idg/tensor_network.hpp
+    idg/string_manipulation.hpp
+    tensor_buffer.hpp
+    w2_bssn_uniform_grid.hpp
+    ranges.hpp
+)
+
+add_sycl_to_target(TARGET w2_bssn_uniform_grid)
+target_compile_features(w2_bssn_uniform_grid
+    PRIVATE
+    cxx_std_26
+)
+target_link_libraries(w2_bssn_uniform_grid PRIVATE std::mdspan)

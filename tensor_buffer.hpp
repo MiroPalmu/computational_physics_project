@@ -10,6 +10,7 @@
 
 #include <experimental/mdspan>
 
+#include "grid_types.hpp"
 #include "idg/sstd.hpp"
 
 /// Stores 3D grid of tensors.
@@ -55,6 +56,10 @@ class tensor_buffer {
         const auto total_elements = Nx_ * Ny_ * Nz_;
         rn::fill(buffs_, vec(total_elements));
     }
+
+    [[nodiscard]]
+    constexpr explicit tensor_buffer(const grid_size gs)
+        : tensor_buffer(gs.Nx, gs.Ny, gs.Nz) {}
 
     [[nodiscard]]
     constexpr auto
