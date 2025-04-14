@@ -7,22 +7,38 @@
 #include <type_traits>
 
 #include "idg/einsum.hpp"
+using namespace idg::literals;
 
 [[nodiscard]]
 w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag)
     : W_(gs),
       lapse_(gs),
       shift_(gs),
-      spatial_metric_(gs),
-      extrinsic_curvature_(gs) {
-    spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
-        spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
+      covariant_conformal_spatial_metric_(gs),
+      contravariant_conformal_spatial_metric_(gs),
+      extrinsic_curvature_trace_(gs),
+      covariant_conformal_A_(gs),
+      contravariant_conformal_christoffel_trace_(gs) {
+    covariant_conformal_spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
+        covariant_conformal_spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
     });
+    contravariant_conformal_spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
+        contravariant_conformal_spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
+    });
+
     lapse_.for_each_index([&](const auto idx) { lapse_[idx][] = 1; });
     shift_.for_each_index([&](const auto idx, const auto tidx) { shift_[idx][tidx] = 0; });
-    extrinsic_curvature_.for_each_index(
-        [&](const auto idx, const auto tidx) { extrinsic_curvature_[idx][tidx] = 0; });
+
+    extrinsic_curvature_trace_.for_each_index(
+        [&](const auto idx) { extrinsic_curvature_trace_[idx][] = 0; });
     W_.for_each_index([&](const auto idx) { W_[idx][] = 1; });
+
+    covariant_conformal_A_.for_each_index(
+        [&](const auto idx, const auto tidx) { covariant_conformal_A_[idx][tidx] = 0; });
+
+    contravariant_conformal_christoffel_trace_.for_each_index([&](const auto idx, const auto tidx) {
+        contravariant_conformal_christoffel_trace_[idx][tidx] = 0;
+    });
 }
 
 [[nodiscard]]
@@ -57,7 +73,19 @@ w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
     std::filesystem::create_directory(dir_path);
     auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
 
-    auto S = determinant3D(spatial_metric_);
-    S.for_each_index([&](const auto idx) { S[idx][] -= 1; });
-    S.write_as_beve(file_path("algebraic_constraint_S.beve"));
+    {
+        auto S = determinant3D(covariant_conformal_spatial_metric_);
+        S.for_each_index([&](const auto idx) { S[idx][] -= 1; });
+        S.write_as_beve(file_path("algebraic_constraint_S.beve"));
+    }
+
+    {
+        auto conformal_A_trace = buffer0(covariant_conformal_A_.size());
+        conformal_A_trace.for_each_index([&](const auto idx) {
+            u8"ij,ij"_einsum(conformal_A_trace[idx],
+                             contravariant_conformal_spatial_metric_[idx],
+                             covariant_conformal_A_[idx]);
+        });
+        conformal_A_trace.write_as_beve(file_path("algebraic_constraint_conformal_A.beve"));
+    }
 }
