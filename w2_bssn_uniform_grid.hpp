@@ -10,7 +10,7 @@
 struct minkowski_spacetime_tag {};
 
 /// Represents grid of point on a 3D spatial slice of 4D space time in bssn formalism
-/// with W^2 conformal decomposition.
+/// with W^2 conformal decomposition and harmonic gauge condition with zero shift.
 ///
 /// Points are at coordinates (i, j, k), where {i,j,k} is in [0, N_{i,j,k}).
 class w2_bssn_uniform_grid {
