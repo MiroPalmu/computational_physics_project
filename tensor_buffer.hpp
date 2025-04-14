@@ -6,11 +6,15 @@
 #include <array>
 #include <concepts>
 #include <cstddef>
+#include <filesystem>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <experimental/mdspan>
+
+#include "glaze/glaze.hpp"
+#include "glaze/glaze_exceptions.hpp"
 
 #include "grid_types.hpp"
 #include "idg/sstd.hpp"
@@ -68,6 +72,11 @@ class tensor_buffer {
         : tensor_buffer(gs.Nx, gs.Ny, gs.Nz) {}
 
     [[nodiscard]]
+    constexpr grid_size size(this auto&& self) {
+        return { self.Nx_, self.Ny_, self.Nz_ };
+    }
+
+    [[nodiscard]]
     constexpr auto
     operator[](this auto&& self, const std::size_t i, const std::size_t j, const std::size_t k) {
         static constexpr auto is_const = std::is_const_v<std::remove_reference_t<decltype(self)>>;
@@ -107,5 +116,9 @@ class tensor_buffer {
                 }
             }
         }
+    }
+
+    void write_as_beve(this auto&& self, const std::filesystem::path& name) {
+        glz::ex::write_file_beve(self.buffs_, name.native(), std::vector<std::byte>{});
     }
 };

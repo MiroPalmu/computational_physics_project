@@ -66,6 +66,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(mdspan)
 target_link_libraries(main PRIVATE std::mdspan)
 
+FetchContent_Declare(
+  glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG v5.1.0
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glaze)
+
+target_link_libraries(main PRIVATE glaze::glaze)
+
 
 # Test executables:
 
@@ -90,6 +100,7 @@ target_compile_features(tensor_buffer
     cxx_std_26
 )
 target_link_libraries(tensor_buffer PRIVATE std::mdspan)
+target_link_libraries(tensor_buffer PRIVATE glaze::glaze)
 
 
 add_executable(w2_bssn_uniform_grid)
@@ -113,3 +124,4 @@ target_compile_features(w2_bssn_uniform_grid
     cxx_std_26
 )
 target_link_libraries(w2_bssn_uniform_grid PRIVATE std::mdspan)
+target_link_libraries(w2_bssn_uniform_grid PRIVATE glaze::glaze)
