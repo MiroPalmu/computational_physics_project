@@ -26,7 +26,6 @@ class w2_bssn_uniform_grid {
     buffer0 lapse_;
     buffer0 extrinsic_curvature_trace_;
 
-    buffer1 shift_;
     buffer1 contravariant_conformal_christoffel_trace_;
 
     buffer2 covariant_conformal_spatial_metric_;

@@ -13,7 +13,6 @@ using namespace idg::literals;
 w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag)
     : W_(gs),
       lapse_(gs),
-      shift_(gs),
       covariant_conformal_spatial_metric_(gs),
       contravariant_conformal_spatial_metric_(gs),
       extrinsic_curvature_trace_(gs),
@@ -27,7 +26,6 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spaceti
     });
 
     lapse_.for_each_index([&](const auto idx) { lapse_[idx][] = 1; });
-    shift_.for_each_index([&](const auto idx, const auto tidx) { shift_[idx][tidx] = 0; });
 
     extrinsic_curvature_trace_.for_each_index(
         [&](const auto idx) { extrinsic_curvature_trace_[idx][] = 0; });
