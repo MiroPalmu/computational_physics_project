@@ -111,3 +111,19 @@ target_compile_features(w2_bssn_uniform_grid
 )
 target_link_libraries(w2_bssn_uniform_grid PRIVATE std::mdspan)
 target_link_libraries(w2_bssn_uniform_grid PRIVATE glaze::glaze)
+
+
+add_executable(mdspan_utils)
+target_sources(mdspan_utils
+    PRIVATE
+    test_mdspan_utils.cpp
+    PRIVATE FILE_SET all_headers TYPE HEADERS
+)
+
+add_sycl_to_target(TARGET mdspan_utils)
+target_compile_features(mdspan_utils
+    PRIVATE
+    cxx_std_26
+)
+target_link_libraries(mdspan_utils PRIVATE std::mdspan)
+target_link_libraries(mdspan_utils PRIVATE glaze::glaze)
