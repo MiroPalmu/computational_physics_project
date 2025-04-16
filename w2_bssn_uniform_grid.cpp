@@ -7,11 +7,14 @@
 #include <type_traits>
 
 #include "idg/einsum.hpp"
+#include "mdspan_utils.hpp"
+
 using namespace idg::literals;
 
 [[nodiscard]]
 w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag)
-    : W_(gs),
+    : grid_size_(gs),
+      W_(gs),
       lapse_(gs),
       covariant_conformal_spatial_metric_(gs),
       contravariant_conformal_spatial_metric_(gs),

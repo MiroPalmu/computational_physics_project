@@ -20,7 +20,7 @@ class w2_bssn_uniform_grid {
     using buffer2 = tensor_buffer<2, 3, real, std::allocator<real>>;
 
   private:
-    std::size_t grid_points_x, grid_points_y, grid_points_z;
+    grid_size grid_size_;
 
     buffer0 W_;
     buffer0 lapse_;
