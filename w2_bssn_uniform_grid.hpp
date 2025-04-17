@@ -13,6 +13,22 @@ struct minkowski_spacetime_tag {};
 /// with W^2 conformal decomposition and harmonic gauge condition with zero shift.
 ///
 /// Points are at coordinates (i, j, k), where {i,j,k} is in [0, N_{i,j,k}).
+///
+/// From: https://arxiv.org/pdf/gr-qc/0206072
+///
+/// - Partial derivatives ∂j ˜Γi are computed as finite differences
+///   of the independent variables ˜Γi that are evolved using (26).
+/// - In all expressions that just require ˜Γi and not its
+///   derivative we substitute ˜γjk ˜Γijk (˜γ), that is we do
+///   not use the independently evolved variable ˜Γi but
+///   recompute ˜Γi according to its definition (14) from
+///   the current values of ˜γij .
+///
+/// In practice we have found that the evolutions are far less
+/// stable if either ˜Γi is treated as an independent variable
+/// everywhere, or if ˜Γi is recomputed from ˜γij before each
+/// time step.
+
 class w2_bssn_uniform_grid {
   public:
     using buffer0 = tensor_buffer<0, 3, real, std::allocator<real>>;
