@@ -24,3 +24,9 @@ constant_geometric_mdspan(F&& f) {
     return idg::sstd::geometric_mdspan<const typename decltype(buff)::value_type, rank, D>(
         buff.data());
 }
+
+template<std::size_t rank, std::size_t D, auto c>
+static constexpr auto
+constant_geometric_mdspan() {
+    return constant_geometric_mdspan<rank, D>([](auto) { return c; });
+}
