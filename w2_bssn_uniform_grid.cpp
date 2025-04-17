@@ -17,15 +17,11 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spaceti
       W_(gs),
       lapse_(gs),
       covariant_conformal_spatial_metric_(gs),
-      contravariant_conformal_spatial_metric_(gs),
       extrinsic_curvature_trace_(gs),
       covariant_conformal_A_(gs),
       contravariant_conformal_christoffel_trace_(gs) {
     covariant_conformal_spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
         covariant_conformal_spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
-    });
-    contravariant_conformal_spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
-        contravariant_conformal_spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
     });
 
     lapse_.for_each_index([&](const auto idx) { lapse_[idx][] = 1; });

@@ -45,7 +45,6 @@ class w2_bssn_uniform_grid {
     buffer1 contravariant_conformal_christoffel_trace_;
 
     buffer2 covariant_conformal_spatial_metric_;
-    buffer2 contravariant_conformal_spatial_metric_;
     buffer2 covariant_conformal_A_;
 
   public:
