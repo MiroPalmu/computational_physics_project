@@ -242,16 +242,21 @@ class einsum {
         return { id_vec, net };
     }
 
+    /// Deduce dimension from T... mdspans which are assumed to satisfy einsum_compatible.
+    ///
+    /// Finds first non rank-0 mdspan and returns it's static_extent(0).
+    /// If all mdspans are rank-0, choose the dimension to be 1.
     template<typename... T>
     static constexpr std::size_t deduce_dimension() {
         return []<typename Head, typename... Tail>(this auto&& self,
                                                    std::type_identity<Head>,
                                                    std::type_identity<Tail>...) -> std::size_t {
-            if (Head::static_extent(0) != 0) {
+            if constexpr (Head::rank() != 0) {
                 return Head::static_extent(0);
             } else if constexpr (0 == sizeof...(Tail)) {
-                // OutMDS and every MDS... is rank 0.
-                return 0uz;
+                // OutMDS and every MDS... (i.e. T...) is rank 0,
+                // so we set dimension to one.
+                return 1uz;
             } else {
                 return self.template operator()(std::type_identity<Tail>{}...);
             }
