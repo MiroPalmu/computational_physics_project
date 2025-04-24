@@ -84,5 +84,5 @@ class w2_bssn_uniform_grid {
     void beve_dump(const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
 
     [[nodiscard]]
-    pre_calculations_type pre_calculations();
+    pre_calculations_type pre_calculations() const;
 };
