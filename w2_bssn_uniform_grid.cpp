@@ -54,9 +54,9 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
 
         using derivative_tidx_type = std::array<std::size_t, rank + 1>;
 
-        auto xtidx   = derivative_tidx_type{};
-        auto ytidx   = derivative_tidx_type{};
-        auto ztidx   = derivative_tidx_type{};
+        auto xtidx = derivative_tidx_type{};
+        auto ytidx = derivative_tidx_type{};
+        auto ztidx = derivative_tidx_type{};
         rn::copy(tidx, xtidx.begin());
         rn::copy(tidx, ytidx.begin());
         rn::copy(tidx, ztidx.begin());
@@ -66,7 +66,6 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
 
         static constexpr auto a = T{ 1 } / T{ 12 };
         static constexpr auto b = T{ 2 } / T{ 3 };
-
 
         derivatives[idx][xtidx] = a * f[{ im2, juz, kuz }][tidx] - b * f[{ im1, juz, kuz }][tidx]
                                   + b * f[{ ip1, juz, kuz }][tidx] - a * f[{ ip2, juz, kuz }][tidx];
@@ -110,26 +109,23 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spaceti
     : grid_size_(gs),
       W_(gs),
       lapse_(gs),
-      covariant_conformal_spatial_metric_(gs),
-      extrinsic_curvature_trace_(gs),
-      covariant_conformal_A_(gs),
-      contravariant_conformal_christoffel_trace_(gs) {
-    covariant_conformal_spatial_metric_.for_each_index([&](const auto idx, const auto tidx) {
-        covariant_conformal_spatial_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
+      coconf_metric_(gs),
+      K_(gs),
+      coconf_A_(gs),
+      contraconf_christoffel_trace_(gs) {
+    coconf_metric_.for_each_index([&](const auto idx, const auto tidx) {
+        coconf_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
     });
 
     lapse_.for_each_index([&](const auto idx) { lapse_[idx][] = 1; });
 
-    extrinsic_curvature_trace_.for_each_index(
-        [&](const auto idx) { extrinsic_curvature_trace_[idx][] = 0; });
+    K_.for_each_index([&](const auto idx) { K_[idx][] = 0; });
     W_.for_each_index([&](const auto idx) { W_[idx][] = 1; });
 
-    covariant_conformal_A_.for_each_index(
-        [&](const auto idx, const auto tidx) { covariant_conformal_A_[idx][tidx] = 0; });
+    coconf_A_.for_each_index([&](const auto idx, const auto tidx) { coconf_A_[idx][tidx] = 0; });
 
-    contravariant_conformal_christoffel_trace_.for_each_index([&](const auto idx, const auto tidx) {
-        contravariant_conformal_christoffel_trace_[idx][tidx] = 0;
-    });
+    contraconf_christoffel_trace_.for_each_index(
+        [&](const auto idx, const auto tidx) { contraconf_christoffel_trace_[idx][tidx] = 0; });
 }
 
 [[nodiscard]]
@@ -183,20 +179,19 @@ w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
     auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
 
     {
-        [[maybe_unused]] auto [S, _] = det_n_inv3D(covariant_conformal_spatial_metric_);
+        [[maybe_unused]] auto [S, _] = det_n_inv3D(coconf_metric_);
         S.for_each_index([&](const auto idx) { S[idx][] -= 1; });
         S.write_as_beve(file_path("algebraic_constraint_S.beve"));
     }
 
     {
-        auto conformal_A_trace = buffer0(covariant_conformal_A_.size());
+        auto conformal_A_trace = buffer0(coconf_A_.size());
 
-        [[maybe_unused]] const auto [_, contraconf_spatial_metric] =
-            det_n_inv3D(covariant_conformal_spatial_metric_);
+        [[maybe_unused]] const auto [_, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
         conformal_A_trace.for_each_index([&](const auto idx) {
             u8"ij,ij"_einsum(conformal_A_trace[idx],
                              contraconf_spatial_metric[idx],
-                             covariant_conformal_A_[idx]);
+                             coconf_A_[idx]);
         });
         conformal_A_trace.write_as_beve(file_path("algebraic_constraint_conformal_A.beve"));
     }
@@ -205,7 +200,7 @@ w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
 w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size gs)
     : lapse(gs),
       W(gs),
-      coconf_spatial_metric(gs),
+      coconf_metric(gs),
       K(gs),
       coconf_A(gs),
       contraconf_christoffel_trace(gs) {}
@@ -214,27 +209,21 @@ w2_bssn_uniform_grid::time_derivative_type
 w2_bssn_uniform_grid::time_derivative() {
     w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
 
-    dfdt.lapse.for_each_index([&](const auto idx) {
-        dfdt.lapse[idx][] = -lapse_[idx][] * lapse_[idx][] * extrinsic_curvature_trace_[idx][];
-    });
+    dfdt.lapse.for_each_index(
+        [&](const auto idx) { dfdt.lapse[idx][] = -lapse_[idx][] * lapse_[idx][] * K_[idx][]; });
 
-    dfdt.W.for_each_index([&](const auto idx) {
-        dfdt.W[idx][] = W_[idx][] * lapse_[idx][] * extrinsic_curvature_trace_[idx][] / real{ 3 };
-    });
+    dfdt.W.for_each_index(
+        [&](const auto idx) { dfdt.W[idx][] = W_[idx][] * lapse_[idx][] * K_[idx][] / real{ 3 }; });
 
-    dfdt.coconf_spatial_metric.for_each_index([&](const auto idx) {
+    dfdt.coconf_metric.for_each_index([&](const auto idx) {
         static constexpr auto minus2 = constant_geometric_mdspan<0, 3, real{ -2 }>();
-        u8",,ij"_einsum(dfdt.coconf_spatial_metric[idx],
-                        minus2,
-                        lapse_[idx],
-                        covariant_conformal_A_[idx]);
+        u8",,ij"_einsum(dfdt.coconf_metric[idx], minus2, lapse_[idx], coconf_A_[idx]);
     });
 
-    [[maybe_unused]] const auto [_, contraconf_spatial_metric] =
-        det_n_inv3D(covariant_conformal_spatial_metric_);
+    [[maybe_unused]] const auto [_, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
 
-    const auto [coconf_christoffels, coconf_spatial_metric_derivative] =
-        finite_difference::co_christoffel_symbols(covariant_conformal_spatial_metric_);
+    const auto [coconf_christoffels, coconf_metric_derivative] =
+        finite_difference::co_christoffel_symbols(coconf_metric_);
 
     const auto W_derivative = finite_difference::periodic_4th_order_central_1st_derivative(W_);
     const auto lapse_derivative =
@@ -272,7 +261,7 @@ w2_bssn_uniform_grid::time_derivative() {
             auto temp = buffer2(grid_size_);
             temp.for_each_index([&](const auto idx) {
                 u8"ij,nm,nm"_einsum(temp[idx],
-                                    covariant_conformal_spatial_metric_[idx],
+                                    coconf_metric_[idx],
                                     contraconf_spatial_metric[idx],
                                     dWdlapse[idx]);
             });
@@ -295,7 +284,7 @@ w2_bssn_uniform_grid::time_derivative() {
             u8"ia,jb,ab"_einsum(temp[idx],
                                 contraconf_spatial_metric[idx],
                                 contraconf_spatial_metric[idx],
-                                covariant_conformal_A_[idx]);
+                                coconf_A_[idx]);
         });
         return temp;
     });
@@ -312,18 +301,14 @@ w2_bssn_uniform_grid::time_derivative() {
         const auto term2 = std::invoke([&] {
             auto temp = buffer0(grid_size_);
             temp.for_each_index([&](const auto idx) {
-                u8",nm,nm"_einsum(temp[idx],
-                                  lapse_[idx],
-                                  contraconf_A[idx],
-                                  covariant_conformal_A_[idx]);
+                u8",nm,nm"_einsum(temp[idx], lapse_[idx], contraconf_A[idx], coconf_A_[idx]);
             });
             return temp;
         });
 
         dfdt.K.for_each_index([&](const auto idx) {
-            const auto term3 = lapse_[idx][] * extrinsic_curvature_trace_[idx][]
-                               * extrinsic_curvature_trace_[idx][] / real{ 3 };
-            dfdt.K[idx][] = -term1[idx][] + term2[idx][] + term3;
+            const auto term3 = lapse_[idx][] * K_[idx][] * K_[idx][] / real{ 3 };
+            dfdt.K[idx][]    = -term1[idx][] + term2[idx][] + term3;
         });
     }
 
@@ -331,10 +316,7 @@ w2_bssn_uniform_grid::time_derivative() {
     { // calculate dfdt.coconf_A
         auto term1 = buffer2(grid_size_);
         term1.for_each_index([&](const auto idx) {
-            u8",,ij"_einsum(term1[idx],
-                            lapse_[idx],
-                            extrinsic_curvature_trace_[idx],
-                            covariant_conformal_A_[idx]);
+            u8",,ij"_einsum(term1[idx], lapse_[idx], K_[idx], coconf_A_[idx]);
         });
 
         { // term 2
@@ -343,9 +325,9 @@ w2_bssn_uniform_grid::time_derivative() {
                 u8",,im,mn,nj"_einsum(term2[idx],
                                       two,
                                       lapse_[idx],
-                                      covariant_conformal_A_[idx],
+                                      coconf_A_[idx],
                                       contraconf_spatial_metric[idx],
-                                      covariant_conformal_A_[idx]);
+                                      coconf_A_[idx]);
             });
 
             term1.for_each_index(
@@ -359,16 +341,16 @@ w2_bssn_uniform_grid::time_derivative() {
                     static constexpr auto minus_half =
                         constant_geometric_mdspan<0, 3, real{ -1 } / real{ 2 }>();
 
-                    const auto coconf_spatial_metric_2nd_derivative =
+                    const auto coconf_metric_2nd_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(
-                            coconf_spatial_metric_derivative);
+                            coconf_metric_derivative);
 
                     auto temp = buffer2(grid_size_);
                     temp.for_each_index([&](const auto idx) {
                         u8",nm,ijnm"_einsum(temp[idx],
                                             minus_half,
                                             contraconf_spatial_metric[idx],
-                                            coconf_spatial_metric_2nd_derivative[idx]);
+                                            coconf_metric_2nd_derivative[idx]);
                     });
                     return temp;
                 });
@@ -379,17 +361,17 @@ w2_bssn_uniform_grid::time_derivative() {
 
                     const auto contraconf_christoffel_trace_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(
-                            contravariant_conformal_christoffel_trace_);
+                            contraconf_christoffel_trace_);
 
                     term2.for_each_index([&](const auto idx) {
                         u8"mi,mj -> ij"_einsum(term2[idx],
-                                               covariant_conformal_spatial_metric_[idx],
+                                               coconf_metric_[idx],
                                                contraconf_christoffel_trace_derivative[idx]);
                     });
 
                     term3.for_each_index([&](const auto idx) {
                         u8"mi,mj -> ji"_einsum(term3[idx],
-                                               covariant_conformal_spatial_metric_[idx],
+                                               coconf_metric_[idx],
                                                contraconf_christoffel_trace_derivative[idx]);
                     });
 
@@ -495,7 +477,7 @@ w2_bssn_uniform_grid::time_derivative() {
                     auto term2 = buffer2(grid_size_);
                     term2.for_each_index([&](const auto idx) {
                         u8"ij,nm,nm"_einsum(term2[idx],
-                                            covariant_conformal_spatial_metric_[idx],
+                                            coconf_metric_[idx],
                                             contraconf_spatial_metric[idx],
                                             coconf_DiDj_W[idx]);
                     });
@@ -510,7 +492,7 @@ w2_bssn_uniform_grid::time_derivative() {
                     term3.for_each_index([&](const auto idx) {
                         u8",ij,mn,m,n"_einsum(term3[idx],
                                               two,
-                                              covariant_conformal_spatial_metric_[idx],
+                                              coconf_metric_[idx],
                                               contraconf_spatial_metric[idx],
                                               W_derivative[idx],
                                               W_derivative[idx]);
@@ -548,7 +530,7 @@ w2_bssn_uniform_grid::time_derivative() {
                     constant_geometric_mdspan<0, 3, real{ 1 } / real{ 3 }>();
                 u8",ij,nm,nm"_einsum(temp[idx],
                                      third,
-                                     covariant_conformal_spatial_metric_[idx],
+                                     coconf_metric_[idx],
                                      contraconf_spatial_metric[idx],
                                      TFterm[idx]);
             });
@@ -592,8 +574,8 @@ w2_bssn_uniform_grid::time_derivative() {
         }
 
         { // term 3
-            const auto K_derivative = finite_difference::periodic_4th_order_central_1st_derivative(
-                extrinsic_curvature_trace_);
+            const auto K_derivative =
+                finite_difference::periodic_4th_order_central_1st_derivative(K_);
 
             auto term3 = buffer1(grid_size_);
             term3.for_each_index([&](const auto idx) {

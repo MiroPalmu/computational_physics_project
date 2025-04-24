@@ -40,7 +40,7 @@ class w2_bssn_uniform_grid {
     struct time_derivative_type {
         w2_bssn_uniform_grid::buffer0 lapse;
         w2_bssn_uniform_grid::buffer0 W;
-        w2_bssn_uniform_grid::buffer2 coconf_spatial_metric;
+        w2_bssn_uniform_grid::buffer2 coconf_metric;
         w2_bssn_uniform_grid::buffer0 K;
         w2_bssn_uniform_grid::buffer2 coconf_A;
         w2_bssn_uniform_grid::buffer1 contraconf_christoffel_trace;
@@ -55,12 +55,12 @@ class w2_bssn_uniform_grid {
 
     buffer0 W_;
     buffer0 lapse_;
-    buffer0 extrinsic_curvature_trace_;
+    buffer0 K_;
 
-    buffer1 contravariant_conformal_christoffel_trace_;
+    buffer1 contraconf_christoffel_trace_;
 
-    buffer2 covariant_conformal_spatial_metric_;
-    buffer2 covariant_conformal_A_;
+    buffer2 coconf_metric_;
+    buffer2 coconf_A_;
 
   public:
     [[nodiscard]]
