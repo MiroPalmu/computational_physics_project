@@ -101,6 +101,7 @@ add_executable(w2_bssn_uniform_grid)
 target_sources(w2_bssn_uniform_grid
     PRIVATE
     w2_bssn_uniform_grid.cpp
+    w2_bssn_uniform_grid2.cpp
     test_w2_bssn_uniform_grid.cpp
     PRIVATE FILE_SET all_headers TYPE HEADERS
 )

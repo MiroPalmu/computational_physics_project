@@ -24,4 +24,10 @@ main() {
     std::println("constraint sizes: {} = {}",
                  to_str(pre.constraints.momentum.size()),
                  to_str(pre.constraints.hamiltonian.size()));
+
+    static constexpr auto dt   = real{ 0.001 };
+    const auto first_iter_step = grid.euler_step(pre.dfdt, dt);
+    const auto [new_dfdt, _]   = first_iter_step.pre_calculations();
+
+    const auto second_iter_step = grid.euler_step(new_dfdt, dt);
 }

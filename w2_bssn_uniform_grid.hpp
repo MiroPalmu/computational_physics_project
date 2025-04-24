@@ -73,7 +73,6 @@ class w2_bssn_uniform_grid {
 
     buffer1 contraconf_christoffel_trace_;
 
-
     buffer2 coconf_metric_;
     buffer2 coconf_A_;
 
@@ -85,4 +84,7 @@ class w2_bssn_uniform_grid {
 
     [[nodiscard]]
     pre_calculations_type pre_calculations() const;
+
+    [[nodiscard]]
+    w2_bssn_uniform_grid euler_step(const time_derivative_type&, const real) const;
 };
