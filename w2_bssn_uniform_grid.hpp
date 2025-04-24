@@ -50,6 +50,10 @@ class w2_bssn_uniform_grid {
         time_derivative_type(const grid_size);
     };
 
+    struct pre_calculations_type {
+        time_derivative_type dfdt;
+    };
+
   private:
     grid_size grid_size_;
 
@@ -69,5 +73,5 @@ class w2_bssn_uniform_grid {
     void beve_dump(const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
 
     [[nodiscard]]
-    time_derivative_type time_derivative();
+    pre_calculations_type pre_calculations();
 };

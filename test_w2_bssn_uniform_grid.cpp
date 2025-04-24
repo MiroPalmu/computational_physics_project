@@ -14,12 +14,12 @@ main() {
         return std::format("{{ {}, {}, {} }}", x.Nx, x.Ny, x.Nz);
     };
 
-    const auto dfdt = grid.time_derivative();
+    const auto pre = grid.pre_calculations();
     std::println("{} = {} = {} = {} = {} = {}",
-                 to_str(dfdt.lapse.size()),
-                 to_str(dfdt.W.size()),
-                 to_str(dfdt.coconf_metric.size()),
-                 to_str(dfdt.K.size()),
-                 to_str(dfdt.coconf_A.size()),
-                 to_str(dfdt.contraconf_christoffel_trace.size()));
+                 to_str(pre.dfdt.lapse.size()),
+                 to_str(pre.dfdt.W.size()),
+                 to_str(pre.dfdt.coconf_metric.size()),
+                 to_str(pre.dfdt.K.size()),
+                 to_str(pre.dfdt.coconf_A.size()),
+                 to_str(pre.dfdt.contraconf_christoffel_trace.size()));
 }

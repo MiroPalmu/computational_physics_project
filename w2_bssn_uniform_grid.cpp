@@ -205,8 +205,8 @@ w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size
       coconf_A(gs),
       contraconf_christoffel_trace(gs) {}
 
-w2_bssn_uniform_grid::time_derivative_type
-w2_bssn_uniform_grid::time_derivative() {
+w2_bssn_uniform_grid::pre_calculations_type
+w2_bssn_uniform_grid::pre_calculations() {
     w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
 
     dfdt.lapse.for_each_index(
@@ -589,5 +589,5 @@ w2_bssn_uniform_grid::time_derivative() {
         }
     }
 
-    return dfdt;
+    return { std::move(dfdt) };
 };
