@@ -2,7 +2,7 @@
 #include <print>
 #include <vector>
 
-#include "w2_bssn_uniform_grid.cpp"
+#include "w2_bssn_uniform_grid.hpp"
 
 int
 main() {
