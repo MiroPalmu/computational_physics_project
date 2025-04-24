@@ -639,5 +639,37 @@ w2_bssn_uniform_grid::pre_calculations() const {
         constraints.momentum = std::move(term1);
     }
 
+    { // momentum constraint damping
+        const auto DiMj = std::invoke([&] {
+            auto M_derivative =
+                finite_difference::periodic_4th_order_central_1st_derivative(constraints.momentum);
+
+            const auto chris_term = std::invoke([&] {
+                auto temp = buffer2(grid_size_);
+                temp.for_each_index([&](const auto idx) {
+                    u8"ab,aij,b"_einsum(temp[idx],
+                                        contraconf_spatial_metric[idx],
+                                        coconf_christoffels[idx],
+                                        constraints.momentum[idx]);
+                });
+                return temp;
+            });
+
+            M_derivative.for_each_index([&](const auto idx, const auto tidx) {
+                M_derivative[idx][tidx] -= chris_term[idx][tidx];
+            });
+
+            return M_derivative;
+        });
+
+        // Used in NR101.
+        static constexpr auto damping_coeff = real{ 0.025 };
+
+        dfdt.coconf_A.for_each_index([&](const auto idx, const auto tidx) {
+            const auto symmDiMj = real{ 0.5 } * (DiMj[idx][tidx] + DiMj[idx][tidx]);
+            dfdt.coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
+        });
+    }
+
     return { std::move(dfdt), std::move(constraints) };
 };
