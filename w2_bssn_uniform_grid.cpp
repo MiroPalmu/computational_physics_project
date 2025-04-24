@@ -212,6 +212,7 @@ w2_bssn_uniform_grid::constraints_type::constraints_type(const grid_size gs)
 w2_bssn_uniform_grid::pre_calculations_type
 w2_bssn_uniform_grid::pre_calculations() {
     w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
+    auto constraints = constraints_type(grid_size_);
 
     dfdt.lapse.for_each_index(
         [&](const auto idx) { dfdt.lapse[idx][] = -lapse_[idx][] * lapse_[idx][] * K_[idx][]; });
@@ -282,7 +283,7 @@ w2_bssn_uniform_grid::pre_calculations() {
         return temp;
     });
 
-    const auto contraconf_A = std::invoke([&] {
+    const auto contraconf_A          = std::invoke([&] {
         auto temp = buffer2(grid_size_);
         temp.for_each_index([&](const auto idx) {
             u8"ia,jb,ab"_einsum(temp[idx],
@@ -292,6 +293,7 @@ w2_bssn_uniform_grid::pre_calculations() {
         });
         return temp;
     });
+    static constexpr auto minus_half = constant_geometric_mdspan<0, 3, real{ -1 } / real{ 2 }>();
 
     { // calculate dfdt.K
         const auto term1 = std::invoke([&] {
@@ -342,9 +344,6 @@ w2_bssn_uniform_grid::pre_calculations() {
         auto TFterm = std::invoke([&] {
             const auto coconf_R = std::invoke([&] {
                 auto term1 = std::invoke([&] {
-                    static constexpr auto minus_half =
-                        constant_geometric_mdspan<0, 3, real{ -1 } / real{ 2 }>();
-
                     const auto coconf_metric_2nd_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(
                             coconf_metric_derivative);
@@ -547,6 +546,8 @@ w2_bssn_uniform_grid::pre_calculations() {
         });
     }
 
+    const auto K_derivative = finite_difference::periodic_4th_order_central_1st_derivative(K_);
+
     { // calculate dfdt.contraconf_christoffel_trace
         auto term1 = std::invoke([&] {
             auto tempA = W_derivative;
@@ -578,8 +579,6 @@ w2_bssn_uniform_grid::pre_calculations() {
         }
 
         { // term 3
-            const auto K_derivative =
-                finite_difference::periodic_4th_order_central_1st_derivative(K_);
 
             auto term3 = buffer1(grid_size_);
             term3.for_each_index([&](const auto idx) {
@@ -593,7 +592,52 @@ w2_bssn_uniform_grid::pre_calculations() {
         }
     }
 
-    auto constraints = constraints_type(grid_size_);
+    { // momentum constraint
+        const auto contracoconf_A = std::invoke([&] {
+            auto temp = buffer2(grid_size_);
+            temp.for_each_index([&](const auto idx) {
+                u8"ij,jk"_einsum(temp[idx], contraconf_spatial_metric[idx], coconf_A_[idx]);
+            });
+            return temp;
+        });
+
+        auto term1 = std::invoke([&] {
+            const auto Ad =
+                finite_difference::periodic_4th_order_central_1st_derivative(contracoconf_A);
+            auto temp = buffer1(grid_size_);
+            temp.for_each_index([&](const auto idx) { u8"jij"_einsum(temp[idx], Ad[idx]); });
+            return temp;
+        });
+
+        { // term 2
+            const auto coconf_A_derivative =
+                finite_difference::periodic_4th_order_central_1st_derivative(coconf_A_);
+
+            auto term2 = buffer1(grid_size_);
+            term2.for_each_index([&](const auto idx) {
+                u8",jk,jki"_einsum(term2[idx],
+                                   minus_half,
+                                   contraconf_spatial_metric[idx],
+                                   coconf_A_derivative[idx]);
+            });
+            term1.for_each_index(
+                [&](const auto idx, const auto tidx) { term1[idx][tidx] += term2[idx][tidx]; });
+        }
+
+        { // terms 3 and 4
+            auto term3 = buffer1(grid_size_);
+            term3.for_each_index([&](const auto idx) {
+                u8"j,ji"_einsum(term3[idx], W_derivative[idx], contracoconf_A[idx]);
+            });
+
+            term3.for_each_index([&](const auto idx, const auto tidx) {
+                const auto c = (real{ 2 } / real{ 3 }) * K_derivative[idx][tidx];
+                term1[idx][tidx] += real{ -3 } * term3[idx][tidx] / W_[idx][] - c;
+            });
+        }
+
+        constraints.momentum = std::move(term1);
+    }
 
     return { std::move(dfdt), std::move(constraints) };
 };

@@ -73,6 +73,7 @@ class w2_bssn_uniform_grid {
 
     buffer1 contraconf_christoffel_trace_;
 
+
     buffer2 coconf_metric_;
     buffer2 coconf_A_;
 
