@@ -48,7 +48,12 @@ class w2_bssn_uniform_grid {
         /// Uninitialized grid with given size.
         [[nodiscard]]
         time_derivative_type(const grid_size);
+
+        /// Applies 6th order Kreiss-Oliger dissipation to derivatives.
+        void kreiss_oliger_6th_order(const w2_bssn_uniform_grid&);
     };
+
+    friend time_derivative_type;
 
     struct constraints_type {
         w2_bssn_uniform_grid::buffer1 momentum;

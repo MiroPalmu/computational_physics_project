@@ -27,7 +27,9 @@ main() {
 
     static constexpr auto dt   = real{ 0.001 };
     const auto first_iter_step = grid.euler_step(pre.dfdt, dt);
-    const auto [new_dfdt, _]   = first_iter_step.pre_calculations();
+    auto [new_dfdt, _]   = first_iter_step.pre_calculations();
 
+    new_dfdt.kreiss_oliger_6th_order(first_iter_step);
     const auto second_iter_step = grid.euler_step(new_dfdt, dt);
+
 }
