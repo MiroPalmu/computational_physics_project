@@ -10,16 +10,18 @@ main() {
     std::println("sizeof(grid) = {}", sizeof(grid));
     grid.beve_dump();
 
-    auto to_str = [](const auto& x) {
-        return std::format("{{ {}, {}, {} }}", x.Nx, x.Ny, x.Nz);
-    };
+    auto to_str = [](const auto& x) { return std::format("{{ {}, {}, {} }}", x.Nx, x.Ny, x.Nz); };
 
     const auto pre = grid.pre_calculations();
-    std::println("{} = {} = {} = {} = {} = {}",
+    std::println("derivative sizes: {} = {} = {} = {} = {} = {}",
                  to_str(pre.dfdt.lapse.size()),
                  to_str(pre.dfdt.W.size()),
                  to_str(pre.dfdt.coconf_metric.size()),
                  to_str(pre.dfdt.K.size()),
                  to_str(pre.dfdt.coconf_A.size()),
                  to_str(pre.dfdt.contraconf_christoffel_trace.size()));
+
+    std::println("constraint sizes: {} = {}",
+                 to_str(pre.constraints.momentum.size()),
+                 to_str(pre.constraints.hamiltonian.size()));
 }

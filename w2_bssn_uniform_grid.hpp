@@ -50,8 +50,18 @@ class w2_bssn_uniform_grid {
         time_derivative_type(const grid_size);
     };
 
+    struct constraints_type {
+        w2_bssn_uniform_grid::buffer1 momentum;
+        w2_bssn_uniform_grid::buffer0 hamiltonian;
+
+        /// Uninitialized grid with given size.
+        [[nodiscard]]
+        constraints_type(const grid_size);
+    };
+
     struct pre_calculations_type {
         time_derivative_type dfdt;
+        constraints_type constraints;
     };
 
   private:

@@ -205,6 +205,10 @@ w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size
       coconf_A(gs),
       contraconf_christoffel_trace(gs) {}
 
+w2_bssn_uniform_grid::constraints_type::constraints_type(const grid_size gs)
+    : momentum(gs),
+      hamiltonian(gs) {}
+
 w2_bssn_uniform_grid::pre_calculations_type
 w2_bssn_uniform_grid::pre_calculations() {
     w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
@@ -589,5 +593,7 @@ w2_bssn_uniform_grid::pre_calculations() {
         }
     }
 
-    return { std::move(dfdt) };
+    auto constraints = constraints_type(grid_size_);
+
+    return { std::move(dfdt), std::move(constraints) };
 };
