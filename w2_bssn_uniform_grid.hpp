@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <cstddef>
@@ -34,6 +35,20 @@ class w2_bssn_uniform_grid {
     using buffer0 = tensor_buffer<0, 3, real, std::allocator<real>>;
     using buffer1 = tensor_buffer<1, 3, real, std::allocator<real>>;
     using buffer2 = tensor_buffer<2, 3, real, std::allocator<real>>;
+    using buffer3 = tensor_buffer<3, 3, real, std::allocator<real>>;
+
+    struct time_derivative_type {
+        w2_bssn_uniform_grid::buffer0 lapse;
+        w2_bssn_uniform_grid::buffer0 W;
+        w2_bssn_uniform_grid::buffer2 coconf_spatial_metric;
+        w2_bssn_uniform_grid::buffer0 K;
+        w2_bssn_uniform_grid::buffer2 coconf_A;
+        w2_bssn_uniform_grid::buffer1 contraconf_christoffel_trace;
+
+        /// Uninitialized grid with given size.
+        [[nodiscard]]
+        time_derivative_type(const grid_size);
+    };
 
   private:
     grid_size grid_size_;
@@ -52,4 +67,7 @@ class w2_bssn_uniform_grid {
     explicit w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag);
 
     void beve_dump(const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
+
+    [[nodiscard]]
+    time_derivative_type time_derivative();
 };
