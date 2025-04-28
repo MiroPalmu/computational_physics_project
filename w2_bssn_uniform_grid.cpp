@@ -10,6 +10,8 @@
 #include <tuple>
 #include <type_traits>
 
+#include <sycl/sycl.hpp>
+
 #include "idg/einsum.hpp"
 #include "mdspan_utils.hpp"
 
@@ -208,6 +210,45 @@ w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size
 w2_bssn_uniform_grid::constraints_type::constraints_type(const grid_size gs)
     : momentum(gs),
       hamiltonian(gs) {}
+
+void
+w2_bssn_uniform_grid::enforce_algebraic_constraints() {
+    const auto [det, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
+
+    coconf_metric_.for_each_index([&](const auto idx) {
+        const auto det3 = sycl::pow(det[idx][], real{ -1 } / real{ 3 });
+
+        coconf_metric_[idx][0, 0] *= det3;
+        coconf_metric_[idx][0, 1] *= det3;
+        coconf_metric_[idx][0, 2] *= det3;
+        coconf_metric_[idx][1, 0] *= det3;
+        coconf_metric_[idx][1, 1] *= det3;
+        coconf_metric_[idx][1, 2] *= det3;
+        coconf_metric_[idx][2, 0] *= det3;
+        coconf_metric_[idx][2, 1] *= det3;
+        coconf_metric_[idx][2, 2] *= det3;
+    });
+
+    const auto trace_remover = std::invoke([&] {
+        auto temp = buffer2(grid_size_);
+        // It does not matter if trace remover is calculated with conformal or
+        // nor conformal metric. At least with W^2, they cancel out:
+        // g_{ij}g^{nm} = \tilde{g}_{ij}\tilde{g}^{nm}
+        temp.for_each_index([&](const auto idx) {
+            static constexpr auto third = constant_geometric_mdspan<0, 3, real{ 1 } / real{ 3 }>();
+            u8",ij,nm,nm"_einsum(temp[idx],
+                                 third,
+                                 coconf_metric_[idx],
+                                 contraconf_spatial_metric[idx],
+                                 coconf_A_[idx]);
+        });
+        return temp;
+    });
+
+    coconf_A_.for_each_index([&](const auto idx, const auto tidx) {
+        coconf_A_[idx][tidx] = coconf_A_[idx][tidx] - trace_remover[idx][tidx];
+    });
+}
 
 w2_bssn_uniform_grid::pre_calculations_type
 w2_bssn_uniform_grid::pre_calculations() const {

@@ -26,10 +26,11 @@ main() {
                  to_str(pre.constraints.hamiltonian.size()));
 
     static constexpr auto dt   = real{ 0.001 };
-    const auto first_iter_step = grid.euler_step(pre.dfdt, dt);
+    auto first_iter_step = grid.euler_step(pre.dfdt, dt);
+    first_iter_step.enforce_algebraic_constraints();
     auto [new_dfdt, _]   = first_iter_step.pre_calculations();
 
     new_dfdt.kreiss_oliger_6th_order(first_iter_step);
-    const auto second_iter_step = grid.euler_step(new_dfdt, dt);
-
+    auto second_iter_step = grid.euler_step(new_dfdt, dt);
+    second_iter_step.enforce_algebraic_constraints();
 }
