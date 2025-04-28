@@ -94,4 +94,5 @@ class w2_bssn_uniform_grid {
     w2_bssn_uniform_grid euler_step(const time_derivative_type&, const real) const;
 
     void enforce_algebraic_constraints();
+    void clamp_W(const real);
 };

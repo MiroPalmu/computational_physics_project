@@ -33,4 +33,5 @@ main() {
     new_dfdt.kreiss_oliger_6th_order(first_iter_step);
     auto second_iter_step = grid.euler_step(new_dfdt, dt);
     second_iter_step.enforce_algebraic_constraints();
+    second_iter_step.clamp_W(real{1});
 }

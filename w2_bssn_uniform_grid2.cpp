@@ -1,5 +1,7 @@
 #include "w2_bssn_uniform_grid.hpp"
 
+#include <sycl/sycl.hpp>
+
 w2_bssn_uniform_grid
 w2_bssn_uniform_grid::euler_step(const time_derivative_type& dfdt, const real dt) const {
     auto f = w2_bssn_uniform_grid{ *this };
@@ -133,4 +135,11 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(const w2_bss
             coconf_metric[idx][tidx] += coeff * coconf_metric_derivative_sum[idx][tidx];
         });
     }
+}
+
+void
+w2_bssn_uniform_grid::clamp_W(const real W) {
+    W_.for_each_index([&](const auto idx){
+        W_[idx][] = sycl::max(W, W_[idx][]);
+    });
 }
