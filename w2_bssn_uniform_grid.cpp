@@ -156,7 +156,7 @@ det_n_inv3D(const w2_bssn_uniform_grid::buffer2& matrix) {
         const auto H = -(a * f - c * d);
         const auto I = (a * e - d * d);
 
-        det[idx][] = a * A + b * b + c * C;
+        det[idx][] = a * A + b * B + c * C;
 
         inv[idx][0, 0] = A / det[idx][];
         inv[idx][1, 0] = B / det[idx][];
