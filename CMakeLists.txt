@@ -40,6 +40,7 @@ target_sources(main
     PRIVATE
     main.cpp
     w2_bssn_uniform_grid.cpp
+    w2_bssn_uniform_grid2.cpp
     PRIVATE FILE_SET all_headers TYPE HEADERS FILES
     idg/einsum.hpp
     idg/generic_algorithm.hpp
