@@ -7,6 +7,7 @@ project(
     DESCRIPTION "Final project of Aalto Computation Physics course PHYS-E0412 2025."
     LANGUAGES CXX
 )
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 find_package(AdaptiveCpp REQUIRED)
 
