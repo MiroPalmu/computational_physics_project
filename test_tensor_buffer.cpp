@@ -4,17 +4,38 @@
 #include <print>
 #include <string>
 
+#include <sycl/sycl.hpp>
+
+#include "idg/sstd.hpp"
+
 #include "tensor_buffer.hpp"
+
+sycl::queue tensor_buffer_queue =
+    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main() {
-    // rank 0
-    auto scalar_buff = tensor_buffer<0, 4, double, std::allocator<double>>(2, 2, 2);
+    struct Foo {
+        tensor_buffer<0, 4, double, std::allocator<double>> scalar_buff{ 2, 2, 2 };
 
-    scalar_buff.for_each_index([&](const grid_index idx, const tensor_index<0> tidx) {
-        const auto [i, j, k]       = idx;
-        scalar_buff[i, j, k][tidx] = static_cast<double>(100 * i + 10 * j + k);
-    });
+        void operator()() {
+            scalar_buff.for_each_index([this](const grid_index idx, const tensor_index<0> tidx) {
+                const auto [i, j, k]             = idx;
+                scalar_buff[i, j, k][tidx] = static_cast<double>(100 * i + 10 * j + k);
+            });
+
+            tensor_buffer_queue.wait();
+
+            for (const auto idx : idg::sstd::geometric_index_space<3, 2>()) {
+                std::println("{}, {}, {} : {}", idx[0], idx[1], idx[2], scalar_buff[idx][]);
+            }
+        }
+    };
+
+    auto f = Foo{};
+    f();
+
+    /*
 
     scalar_buff.for_each_index([&](const grid_index idx, const tensor_index<0> tidx) {
         const auto [i, j, k] = idx;
@@ -51,4 +72,5 @@ main() {
                      buff[idx][0, 1],
                      buff[idx][1, 1]);
     });
+    */
 }

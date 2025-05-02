@@ -13,11 +13,15 @@
 
 #include <experimental/mdspan>
 
+#include <sycl/sycl.hpp>
+
 #include "glaze/glaze.hpp"
 #include "glaze/glaze_exceptions.hpp"
 
 #include "grid_types.hpp"
 #include "idg/sstd.hpp"
+
+extern sycl::queue tensor_buffer_queue;
 
 /// Stores 3D grid of tensors.
 template<std::size_t rank, std::size_t D, typename T, typename Allocator>
@@ -63,9 +67,18 @@ class tensor_buffer {
                                      const std::size_t Nz)
         : Nx_{ Nx },
           Ny_{ Ny },
-          Nz_{ Nz } {
-        rn::fill(buffs_, vec(total_elements()));
-    }
+          Nz_{ Nz },
+          buffs_{ [&]<std::size_t... I>(std::index_sequence<I...>) {
+        if constexpr (std::same_as<Allocator,
+                                   sycl::usm_allocator<real, sycl::usm::alloc::shared>>) {
+            return std::array{ (
+                std::ignore = I,
+                vec(total_elements(),
+                    sycl::usm_allocator<real, sycl::usm::alloc::shared>(tensor_buffer_queue)))... };
+        } else {
+            return std::array{ (std::ignore = I, vec(total_elements()))... };
+        }
+          }(std::make_index_sequence<std::tuple_size<decltype(buffs_)>{}>()) } {}
 
     [[nodiscard]]
     constexpr explicit tensor_buffer(const grid_size gs)
@@ -100,20 +113,18 @@ class tensor_buffer {
         requires std::invocable<F, grid_index, tensor_index<rank>> or std::invocable<F, grid_index>
     constexpr void for_each_index(this auto&& self, F&& f) {
         if constexpr (std::invocable<F, grid_index>) {
-            for (const auto i : rv::iota(0uz, self.total_elements())) {
-                const auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
-                                             (i / self.Nz_) % self.Ny_,
-                                             i % self.Nz_ };
-                std::invoke(std::forward<F>(f), idx);
-            }
+            tensor_buffer_queue.parallel_for(sycl::range{ self.Nx_, self.Ny_, self.Nz_ },
+                                             [f = std::forward<F>(f)](sycl::id<3> idx) {
+                                                 std::invoke(f,
+                                                             grid_index{ idx[0], idx[1], idx[2] });
+                                             });
         } else {
             for (const auto tidx : idg::sstd::geometric_index_space<rank, D>()) {
-                for (const auto i : rv::iota(0uz, self.total_elements())) {
-                    const auto idx = grid_index{ (i / (self.Ny_ * self.Nz_)) % self.Nx_,
-                                                 (i / self.Nz_) % self.Ny_,
-                                                 i % self.Nz_ };
-                    std::invoke(std::forward<F>(f), idx, tidx);
-                }
+                tensor_buffer_queue.parallel_for(
+                    sycl::range{ self.Nx_, self.Ny_, self.Nz_ },
+                    [=](sycl::id<3> idx) {
+                        std::invoke(f, grid_index{ idx[0], idx[1], idx[2] }, tidx);
+                    });
             }
         }
     }
