@@ -2,13 +2,19 @@
 #include <print>
 #include <vector>
 
+#include <sycl/sycl.hpp>
+
 #include "w2_bssn_uniform_grid.hpp"
+
+sycl::queue tensor_buffer_queue =
+    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main() {
     auto grid = w2_bssn_uniform_grid({ 2, 3, 4 }, minkowski_spacetime_tag{});
     std::println("sizeof(grid) = {}", sizeof(grid));
     grid.beve_dump();
+    /*
 
     auto to_str = [](const auto& x) { return std::format("{{ {}, {}, {} }}", x.Nx, x.Ny, x.Nz); };
 
@@ -34,4 +40,5 @@ main() {
     auto second_iter_step = grid.euler_step(new_dfdt, dt);
     second_iter_step.enforce_algebraic_constraints();
     second_iter_step.clamp_W(real{1});
+    */
 }

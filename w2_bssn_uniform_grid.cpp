@@ -6,6 +6,7 @@
 #include <cmath>
 #include <concepts>
 #include <functional>
+#include <print>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -30,7 +31,11 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
 
     auto derivatives = buff_type(f.size());
 
-    f.for_each_index([&](const auto idx, const auto tidx) {
+    auto* const f_ptr           = &f;
+    auto* const derivatives_ptr = &derivatives;
+    const auto [fNx, fNy, fNz]  = f.size();
+
+    f.for_each_index([=](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
         const auto juz = idx[1];
         const auto kuz = idx[2];
@@ -39,20 +44,20 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         const auto j = static_cast<std::ptrdiff_t>(juz);
         const auto k = static_cast<std::ptrdiff_t>(kuz);
 
-        const auto im2 = (i - 2) % f.size().Nx;
-        const auto im1 = (i - 1) % f.size().Nx;
-        const auto ip1 = (i + 1) % f.size().Nx;
-        const auto ip2 = (i + 2) % f.size().Nx;
+        const auto im2 = (i - 2) % fNx;
+        const auto im1 = (i - 1) % fNx;
+        const auto ip1 = (i + 1) % fNx;
+        const auto ip2 = (i + 2) % fNx;
 
-        const auto jm2 = (j - 2) % f.size().Ny;
-        const auto jm1 = (j - 1) % f.size().Ny;
-        const auto jp1 = (j + 1) % f.size().Ny;
-        const auto jp2 = (j + 2) % f.size().Ny;
+        const auto jm2 = (j - 2) % fNy;
+        const auto jm1 = (j - 1) % fNy;
+        const auto jp1 = (j + 1) % fNy;
+        const auto jp2 = (j + 2) % fNy;
 
-        const auto km2 = (k - 2) % f.size().Nz;
-        const auto km1 = (k - 1) % f.size().Nz;
-        const auto kp1 = (k + 1) % f.size().Nz;
-        const auto kp2 = (k + 2) % f.size().Nz;
+        const auto km2 = (k - 2) % fNz;
+        const auto km1 = (k - 1) % fNz;
+        const auto kp1 = (k + 1) % fNz;
+        const auto kp2 = (k + 2) % fNz;
 
         using derivative_tidx_type = std::array<std::size_t, rank + 1>;
 
@@ -69,15 +74,21 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         static constexpr auto a = T{ 1 } / T{ 12 };
         static constexpr auto b = T{ 2 } / T{ 3 };
 
-        derivatives[idx][xtidx] = a * f[{ im2, juz, kuz }][tidx] - b * f[{ im1, juz, kuz }][tidx]
-                                  + b * f[{ ip1, juz, kuz }][tidx] - a * f[{ ip2, juz, kuz }][tidx];
+        (*derivatives_ptr)[idx][xtidx] =
+            a * (*f_ptr)[{ im2, juz, kuz }][tidx] - b * (*f_ptr)[{ im1, juz, kuz }][tidx]
+            + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx];
 
-        derivatives[idx][ytidx] = a * f[{ iuz, jm2, kuz }][tidx] - b * f[{ iuz, jm1, kuz }][tidx]
-                                  + b * f[{ iuz, jp1, kuz }][tidx] - a * f[{ iuz, jp2, kuz }][tidx];
+        (*derivatives_ptr)[idx][ytidx] =
+            a * (*f_ptr)[{ iuz, jm2, kuz }][tidx] - b * (*f_ptr)[{ iuz, jm1, kuz }][tidx]
+            + b * (*f_ptr)[{ iuz, jp1, kuz }][tidx] - a * (*f_ptr)[{ iuz, jp2, kuz }][tidx];
 
-        derivatives[idx][ztidx] = a * f[{ iuz, juz, km2 }][tidx] - b * f[{ iuz, juz, km1 }][tidx]
-                                  + b * f[{ iuz, juz, kp1 }][tidx] - a * f[{ iuz, juz, kp2 }][tidx];
+        (*derivatives_ptr)[idx][ztidx] =
+            a * (*f_ptr)[{ iuz, juz, km2 }][tidx] - b * (*f_ptr)[{ iuz, juz, km1 }][tidx]
+            + b * (*f_ptr)[{ iuz, juz, kp1 }][tidx] - a * (*f_ptr)[{ iuz, juz, kp2 }][tidx];
     });
+
+    // Sync just in case.
+    tensor_buffer_queue.wait();
 
     return derivatives;
 }
@@ -88,18 +99,25 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
 template<typename T, typename Allocator>
 [[nodiscard]]
 std::pair<w2_bssn_uniform_grid::buffer3, w2_bssn_uniform_grid::buffer3>
-co_christoffel_symbols(const tensor_buffer<2, 3, T, Allocator>& co_spatial_metric) {
-    auto dg           = periodic_4th_order_central_1st_derivative(co_spatial_metric);
-    auto christoffels = tensor_buffer<3, 3, T, Allocator>(co_spatial_metric.size());
+co_christoffel_symbols(const tensor_buffer<2, 3, T, Allocator>& co_metric) {
+    auto dg           = periodic_4th_order_central_1st_derivative(co_metric);
+    auto christoffels = tensor_buffer<3, 3, T, Allocator>(co_metric.size());
+
+    auto* const dg_ptr = &dg;
+    auto* const c_ptr  = &christoffels;
 
     using tidx_type = std::array<std::size_t, 3>;
-    christoffels.for_each_index([&](const auto idx, const tidx_type tidx) {
+
+    christoffels.for_each_index([=](const auto idx, const tidx_type tidx) {
         const auto cab = tidx;
         const auto cba = tidx_type{ cab[0], cab[2], cab[1] };
         const auto abc = tidx_type{ cab[1], cab[2], cab[0] };
 
-        christoffels[idx][cab] = (T{ 1 } / T{ 2 }) * (dg[idx][cab] + dg[idx][cba] - dg[idx][abc]);
+        (*c_ptr)[idx][cab] =
+            (T{ 1 } / T{ 2 }) * ((*dg_ptr)[idx][cab] + (*dg_ptr)[idx][cba] - (*dg_ptr)[idx][abc]);
     });
+
+    tensor_buffer_queue.wait();
 
     return { std::move(christoffels), std::move(dg) };
 }
@@ -115,19 +133,23 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spaceti
       K_(gs),
       coconf_A_(gs),
       contraconf_christoffel_trace_(gs) {
-    coconf_metric_.for_each_index([&](const auto idx, const auto tidx) {
+    coconf_metric_.for_each_index([this](const auto idx, const auto tidx) {
         coconf_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
     });
 
-    lapse_.for_each_index([&](const auto idx) { lapse_[idx][] = 1; });
+          /*
+    lapse_.for_each_index([this](const auto idx) { lapse_[idx][] = 1; });
 
-    K_.for_each_index([&](const auto idx) { K_[idx][] = 0; });
-    W_.for_each_index([&](const auto idx) { W_[idx][] = 1; });
+    K_.for_each_index([this](const auto idx) { K_[idx][] = 0; });
+    W_.for_each_index([this](const auto idx) { W_[idx][] = 1; });
 
-    coconf_A_.for_each_index([&](const auto idx, const auto tidx) { coconf_A_[idx][tidx] = 0; });
+    coconf_A_.for_each_index([this](const auto idx, const auto tidx) { coconf_A_[idx][tidx] = 0; });
 
     contraconf_christoffel_trace_.for_each_index(
-        [&](const auto idx, const auto tidx) { contraconf_christoffel_trace_[idx][tidx] = 0; });
+        [this](const auto idx, const auto tidx) { contraconf_christoffel_trace_[idx][tidx] = 0; });
+        */
+
+    tensor_buffer_queue.wait();
 }
 
 [[nodiscard]]
@@ -135,16 +157,21 @@ std::pair<w2_bssn_uniform_grid::buffer0, w2_bssn_uniform_grid::buffer2>
 det_n_inv3D(const w2_bssn_uniform_grid::buffer2& matrix) {
     auto det = w2_bssn_uniform_grid::buffer0(matrix.size());
     auto inv = w2_bssn_uniform_grid::buffer2(matrix.size());
-    det.for_each_index([&](const auto idx) {
-        const auto a = matrix[idx][0, 0];
-        const auto b = matrix[idx][0, 1];
-        const auto c = matrix[idx][0, 2];
-        const auto d = matrix[idx][1, 0];
-        const auto e = matrix[idx][1, 1];
-        const auto f = matrix[idx][1, 2];
-        const auto g = matrix[idx][2, 0];
-        const auto h = matrix[idx][2, 1];
-        const auto i = matrix[idx][2, 2];
+
+    auto* const matrix_ptr = &matrix;
+    auto* const det_ptr    = &det;
+    auto* const inv_ptr    = &inv;
+
+    det.for_each_index([=](const auto idx) {
+        const auto a = (*matrix_ptr)[idx][0, 0];
+        const auto b = (*matrix_ptr)[idx][0, 1];
+        const auto c = (*matrix_ptr)[idx][0, 2];
+        const auto d = (*matrix_ptr)[idx][1, 0];
+        const auto e = (*matrix_ptr)[idx][1, 1];
+        const auto f = (*matrix_ptr)[idx][1, 2];
+        const auto g = (*matrix_ptr)[idx][2, 0];
+        const auto h = (*matrix_ptr)[idx][2, 1];
+        const auto i = (*matrix_ptr)[idx][2, 2];
 
         const auto A = (e * i - f * h);
         const auto B = -(d * i - f * g);
@@ -158,18 +185,21 @@ det_n_inv3D(const w2_bssn_uniform_grid::buffer2& matrix) {
         const auto H = -(a * f - c * d);
         const auto I = (a * e - d * d);
 
-        det[idx][] = a * A + b * B + c * C;
+        (*det_ptr)[idx][] = a * A + b * B + c * C;
 
-        inv[idx][0, 0] = A / det[idx][];
-        inv[idx][1, 0] = B / det[idx][];
-        inv[idx][2, 0] = C / det[idx][];
-        inv[idx][0, 1] = D / det[idx][];
-        inv[idx][1, 1] = E / det[idx][];
-        inv[idx][2, 1] = F / det[idx][];
-        inv[idx][0, 2] = G / det[idx][];
-        inv[idx][1, 2] = H / det[idx][];
-        inv[idx][2, 2] = I / det[idx][];
+        (*inv_ptr)[idx][0, 0] = A / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][1, 0] = B / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][2, 0] = C / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][0, 1] = D / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][1, 1] = E / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][2, 1] = F / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][0, 2] = G / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][1, 2] = H / (*det_ptr)[idx][];
+        (*inv_ptr)[idx][2, 2] = I / (*det_ptr)[idx][];
     });
+
+    // Sync just in case.
+    tensor_buffer_queue.wait();
 
     return { std::move(det), std::move(inv) };
 }
@@ -177,6 +207,8 @@ det_n_inv3D(const w2_bssn_uniform_grid::buffer2& matrix) {
 void
 w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
     const auto dir_path = std::filesystem::weakly_canonical(dump_dir_name);
+    std::println("stub bevedump: {}", dir_path.c_str());
+    /*
     std::filesystem::create_directory(dir_path);
     auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
 
@@ -197,6 +229,7 @@ w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
         });
         conformal_A_trace.write_as_beve(file_path("algebraic_constraint_conformal_A.beve"));
     }
+    */
 }
 
 w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size gs)
@@ -213,10 +246,13 @@ w2_bssn_uniform_grid::constraints_type::constraints_type(const grid_size gs)
 
 void
 w2_bssn_uniform_grid::enforce_algebraic_constraints() {
-    const auto [det, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
+    const auto [det, contraconf_metric] = det_n_inv3D(coconf_metric_);
 
-    coconf_metric_.for_each_index([&](const auto idx) {
-        const auto det3 = sycl::pow(det[idx][], real{ -1 } / real{ 3 });
+    auto* const det_ptr               = &det;
+    auto* const contraconf_metric_ptr = &contraconf_metric;
+
+    coconf_metric_.for_each_index([=, this](const auto idx) {
+        const auto det3 = sycl::pow((*det_ptr)[idx][], real{ -1 } / real{ 3 });
 
         coconf_metric_[idx][0, 0] *= det3;
         coconf_metric_[idx][0, 1] *= det3;
@@ -230,24 +266,31 @@ w2_bssn_uniform_grid::enforce_algebraic_constraints() {
     });
 
     const auto trace_remover = std::invoke([&] {
-        auto temp = buffer2(grid_size_);
+        auto temp            = buffer2(grid_size_);
+        auto* const temp_ptr = &temp;
+
         // It does not matter if trace remover is calculated with conformal or
         // nor conformal metric. At least with W^2, they cancel out:
         // g_{ij}g^{nm} = \tilde{g}_{ij}\tilde{g}^{nm}
-        temp.for_each_index([&](const auto idx) {
+        temp.for_each_index([=, this](const auto idx) {
             static constexpr auto third = constant_geometric_mdspan<0, 3, real{ 1 } / real{ 3 }>();
-            u8",ij,nm,nm"_einsum(temp[idx],
+            u8",ij,nm,nm"_einsum((*temp_ptr)[idx],
                                  third,
                                  coconf_metric_[idx],
-                                 contraconf_spatial_metric[idx],
+                                 (*contraconf_metric_ptr)[idx],
                                  coconf_A_[idx]);
         });
+
+        // Sync just in case.
+        tensor_buffer_queue.wait();
         return temp;
     });
 
-    coconf_A_.for_each_index([&](const auto idx, const auto tidx) {
-        coconf_A_[idx][tidx] = coconf_A_[idx][tidx] - trace_remover[idx][tidx];
+    auto* const trace_remover_ptr = &trace_remover;
+    coconf_A_.for_each_index([=, this](const auto idx, const auto tidx) {
+        coconf_A_[idx][tidx] = coconf_A_[idx][tidx] - (*trace_remover_ptr)[idx][tidx];
     });
+    tensor_buffer_queue.wait();
 }
 
 w2_bssn_uniform_grid::pre_calculations_type
@@ -255,461 +298,612 @@ w2_bssn_uniform_grid::pre_calculations() const {
     w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
     auto constraints = constraints_type(grid_size_);
 
-    dfdt.lapse.for_each_index(
-        [&](const auto idx) { dfdt.lapse[idx][] = -lapse_[idx][] * lapse_[idx][] * K_[idx][]; });
+    auto* const dfdt_ptr        = &dfdt;
+    auto* const constraints_ptr = &constraints;
 
-    dfdt.W.for_each_index(
-        [&](const auto idx) { dfdt.W[idx][] = W_[idx][] * lapse_[idx][] * K_[idx][] / real{ 3 }; });
-
-    dfdt.coconf_metric.for_each_index([&](const auto idx) {
-        static constexpr auto minus2 = constant_geometric_mdspan<0, 3, real{ -2 }>();
-        u8",,ij"_einsum(dfdt.coconf_metric[idx], minus2, lapse_[idx], coconf_A_[idx]);
+    dfdt.lapse.for_each_index([=, this](const auto idx) {
+        dfdt_ptr->lapse[idx][] = -lapse_[idx][] * lapse_[idx][] * K_[idx][];
     });
 
-    [[maybe_unused]] const auto [_, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
+    dfdt.W.for_each_index([=, this](const auto idx) {
+        dfdt_ptr->W[idx][] = W_[idx][] * lapse_[idx][] * K_[idx][] / real{ 3 };
+    });
+
+    dfdt.coconf_metric.for_each_index([=, this](const auto idx) {
+        static constexpr auto minus2 = constant_geometric_mdspan<0, 3, real{ -2 }>();
+        u8",,ij"_einsum(dfdt_ptr->coconf_metric[idx], minus2, lapse_[idx], coconf_A_[idx]);
+    });
+
+    [[maybe_unused]] const auto [_, contraconf_metric] = det_n_inv3D(coconf_metric_);
+    auto* const contraconf_metric_ptr                  = &contraconf_metric;
 
     const auto [coconf_christoffels, coconf_metric_derivative] =
         finite_difference::co_christoffel_symbols(coconf_metric_);
+    auto* const coconf_metric_derivative_ptr = &coconf_metric_derivative;
+    auto* const coconf_christoffels_ptr      = &coconf_christoffels;
 
     const auto W_derivative = finite_difference::periodic_4th_order_central_1st_derivative(W_);
     const auto lapse_derivative =
         finite_difference::periodic_4th_order_central_1st_derivative(lapse_);
+    auto* const W_derivative_ptr     = &W_derivative;
+    auto* const lapse_derivative_ptr = &lapse_derivative;
 
-    const auto co_W2DiDj_lapse = std::invoke([&] {
-        const auto coconf_DiDj_lapse = std::invoke([&] {
+    const auto co_W2DiDj_lapse      = std::invoke([&] {
+        const auto coconf_DiDj_lapse      = std::invoke([&] {
             auto lapse_2nd_derivative =
                 finite_difference::periodic_4th_order_central_1st_derivative(lapse_derivative);
+            auto* const lapse_2nd_derivative_ptr = &lapse_2nd_derivative;
 
-            auto christoffel_term = buffer2(grid_size_);
-            christoffel_term.for_each_index([&](const auto idx) {
-                u8"ij,jab,i"_einsum(christoffel_term[idx],
-                                    contraconf_spatial_metric[idx],
-                                    coconf_christoffels[idx],
-                                    lapse_derivative[idx]);
+            auto christoffel_term            = buffer2(grid_size_);
+            auto* const christoffel_term_ptr = &christoffel_term;
+            christoffel_term.for_each_index([=](const auto idx) {
+                u8"ij,jab,i"_einsum((*christoffel_term_ptr)[idx],
+                                    (*contraconf_metric_ptr)[idx],
+                                    (*coconf_christoffels_ptr)[idx],
+                                    (*lapse_derivative_ptr)[idx]);
             });
 
-            lapse_2nd_derivative.for_each_index([&](const auto idx, const auto tidx) {
-                lapse_2nd_derivative[idx][tidx] -= christoffel_term[idx][tidx];
+            lapse_2nd_derivative.for_each_index([=](const auto idx, const auto tidx) {
+                (*lapse_2nd_derivative_ptr)[idx][tidx] -= (*christoffel_term_ptr)[idx][tidx];
             });
 
+            tensor_buffer_queue.wait();
             return lapse_2nd_derivative;
         });
+        auto* const coconf_DiDj_lapse_ptr = &coconf_DiDj_lapse;
 
         const auto dWdlapse = std::invoke([&] {
-            auto temp = buffer2(grid_size_);
-            temp.for_each_index([&](const auto idx) {
-                u8"i,j"_einsum(temp[idx], W_derivative[idx], lapse_derivative[idx]);
+            auto temp            = buffer2(grid_size_);
+            auto* const temp_ptr = &temp;
+            temp.for_each_index([=](const auto idx) {
+                u8"i,j"_einsum((*temp_ptr)[idx],
+                               (*W_derivative_ptr)[idx],
+                               (*lapse_derivative_ptr)[idx]);
             });
+            tensor_buffer_queue.wait();
             return temp;
         });
 
-        const auto last_term = std::invoke([&] {
-            auto temp = buffer2(grid_size_);
-            temp.for_each_index([&](const auto idx) {
-                u8"ij,nm,nm"_einsum(temp[idx],
+        auto* const dWdlapse_ptr = &dWdlapse;
+
+        const auto last_term      = std::invoke([&] {
+            auto temp            = buffer2(grid_size_);
+            auto* const temp_ptr = &temp;
+            temp.for_each_index([=, this](const auto idx) {
+                u8"ij,nm,nm"_einsum((*temp_ptr)[idx],
                                     coconf_metric_[idx],
-                                    contraconf_spatial_metric[idx],
-                                    dWdlapse[idx]);
+                                    (*contraconf_metric_ptr)[idx],
+                                    (*dWdlapse_ptr)[idx]);
             });
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const last_term_ptr = &last_term;
 
-        auto temp = buffer2(grid_size_);
-        temp.for_each_index([&](const auto idx, const auto tidx) {
-            temp[idx][tidx] = W_[idx][] * coconf_DiDj_lapse[idx][tidx] + dWdlapse[idx][tidx]
-                              + dWdlapse[idx][std::array{ tidx[1], tidx[0] }]
-                              - last_term[idx][tidx];
-            temp[idx][tidx] *= W_[idx][];
+        auto temp            = buffer2(grid_size_);
+        auto* const temp_ptr = &temp;
+        temp.for_each_index([=, this](const auto idx, const auto tidx) {
+            (*temp_ptr)[idx][tidx] = W_[idx][] * (*coconf_DiDj_lapse_ptr)[idx][tidx]
+                                     + (*dWdlapse_ptr)[idx][tidx]
+                                     + (*dWdlapse_ptr)[idx][std::array{ tidx[1], tidx[0] }]
+                                     - (*last_term_ptr)[idx][tidx];
+            (*temp_ptr)[idx][tidx] *= W_[idx][];
         });
+
+        tensor_buffer_queue.wait();
         return temp;
     });
+    auto* const co_W2DiDj_lapse_ptr = &co_W2DiDj_lapse;
 
     const auto contraconf_A          = std::invoke([&] {
-        auto temp = buffer2(grid_size_);
-        temp.for_each_index([&](const auto idx) {
-            u8"ia,jb,ab"_einsum(temp[idx],
-                                contraconf_spatial_metric[idx],
-                                contraconf_spatial_metric[idx],
+        auto temp            = buffer2(grid_size_);
+        auto* const temp_ptr = &temp;
+        temp.for_each_index([=, this](const auto idx) {
+            u8"ia,jb,ab"_einsum((*temp_ptr)[idx],
+                                (*contraconf_metric_ptr)[idx],
+                                (*contraconf_metric_ptr)[idx],
                                 coconf_A_[idx]);
         });
+
+        tensor_buffer_queue.wait();
         return temp;
     });
+    auto* const contraconf_A_ptr     = &contraconf_A;
     static constexpr auto minus_half = constant_geometric_mdspan<0, 3, real{ -1 } / real{ 2 }>();
 
     { // calculate dfdt.K
-        const auto term1 = std::invoke([&] {
-            auto temp = buffer0(grid_size_);
-            temp.for_each_index([&](const auto idx) {
-                u8"nm,nm"_einsum(temp[idx], contraconf_spatial_metric[idx], co_W2DiDj_lapse[idx]);
+        const auto term1      = std::invoke([&] {
+            auto temp            = buffer0(grid_size_);
+            auto* const temp_ptr = &temp;
+            temp.for_each_index([=](const auto idx) {
+                u8"nm,nm"_einsum((*temp_ptr)[idx],
+                                 (*contraconf_metric_ptr)[idx],
+                                 (*co_W2DiDj_lapse_ptr)[idx]);
             });
+
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const term1_ptr = &term1;
 
-        const auto term2 = std::invoke([&] {
-            auto temp = buffer0(grid_size_);
-            temp.for_each_index([&](const auto idx) {
-                u8",nm,nm"_einsum(temp[idx], lapse_[idx], contraconf_A[idx], coconf_A_[idx]);
+        const auto term2      = std::invoke([&] {
+            auto temp            = buffer0(grid_size_);
+            auto* const temp_ptr = &temp;
+            temp.for_each_index([=, this](const auto idx) {
+                u8",nm,nm"_einsum((*temp_ptr)[idx], lapse_[idx], contraconf_A[idx], coconf_A_[idx]);
             });
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const term2_ptr = &term2;
 
-        dfdt.K.for_each_index([&](const auto idx) {
-            const auto term3 = lapse_[idx][] * K_[idx][] * K_[idx][] / real{ 3 };
-            dfdt.K[idx][]    = -term1[idx][] + term2[idx][] + term3;
+        dfdt.K.for_each_index([=, this](const auto idx) {
+            const auto term3   = lapse_[idx][] * K_[idx][] * K_[idx][] / real{ 3 };
+            dfdt_ptr->K[idx][] = -(*term1_ptr)[idx][] + (*term2_ptr)[idx][] + term3;
         });
+        tensor_buffer_queue.wait();
     }
 
     static constexpr auto two = constant_geometric_mdspan<0, 3, real{ 2 }>();
     { // calculate dfdt.coconf_A
-        auto term1 = buffer2(grid_size_);
-        term1.for_each_index([&](const auto idx) {
-            u8",,ij"_einsum(term1[idx], lapse_[idx], K_[idx], coconf_A_[idx]);
+        auto term1            = buffer2(grid_size_);
+        auto* const term1_ptr = &term1;
+        term1.for_each_index([=, this](const auto idx) {
+            u8",,ij"_einsum((*term1_ptr)[idx], lapse_[idx], K_[idx], coconf_A_[idx]);
         });
 
         { // term 2
-            auto term2 = buffer2(grid_size_);
-            term2.for_each_index([&](const auto idx) {
-                u8",,im,mn,nj"_einsum(term2[idx],
+            auto term2            = buffer2(grid_size_);
+            auto* const term2_ptr = &term2;
+            term2.for_each_index([=, this](const auto idx) {
+                u8",,im,mn,nj"_einsum((*term2_ptr)[idx],
                                       two,
                                       lapse_[idx],
                                       coconf_A_[idx],
-                                      contraconf_spatial_metric[idx],
+                                      (*contraconf_metric_ptr)[idx],
                                       coconf_A_[idx]);
             });
 
-            term1.for_each_index(
-                [&](const auto idx, const auto tidx) { term1[idx][tidx] -= term2[idx][tidx]; });
+            term1.for_each_index([=](const auto idx, const auto tidx) {
+                (*term1_ptr)[idx][tidx] -= (*term2_ptr)[idx][tidx];
+            });
+
+            tensor_buffer_queue.wait();
         }
 
         // trace free term
         auto TFterm = std::invoke([&] {
-            const auto coconf_R = std::invoke([&] {
+            const auto coconf_R      = std::invoke([&] {
                 auto term1 = std::invoke([&] {
                     const auto coconf_metric_2nd_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(
                             coconf_metric_derivative);
+                    auto* const coconf_metric_2nd_derivative_ptr = &coconf_metric_2nd_derivative;
 
-                    auto temp = buffer2(grid_size_);
-                    temp.for_each_index([&](const auto idx) {
-                        u8",nm,ijnm"_einsum(temp[idx],
+                    auto temp            = buffer2(grid_size_);
+                    auto* const temp_ptr = &temp;
+                    temp.for_each_index([=](const auto idx) {
+                        u8",nm,ijnm"_einsum((*temp_ptr)[idx],
                                             minus_half,
-                                            contraconf_spatial_metric[idx],
-                                            coconf_metric_2nd_derivative[idx]);
+                                            (*contraconf_metric_ptr)[idx],
+                                            (*coconf_metric_2nd_derivative_ptr)[idx]);
                     });
+
+                    tensor_buffer_queue.wait();
                     return temp;
                 });
 
+                auto* const term1_ptr = &term1;
+
                 { // terms 2 and 3
-                    auto term2 = buffer2(grid_size_);
-                    auto term3 = buffer2(grid_size_);
+                    auto term2            = buffer2(grid_size_);
+                    auto term3            = buffer2(grid_size_);
+                    auto* const term2_ptr = &term2;
+                    auto* const term3_ptr = &term3;
 
                     const auto contraconf_christoffel_trace_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(
                             contraconf_christoffel_trace_);
+                    auto* const contraconf_christoffel_trace_derivative_ptr =
+                        &contraconf_christoffel_trace_derivative;
 
-                    term2.for_each_index([&](const auto idx) {
-                        u8"mi,mj -> ij"_einsum(term2[idx],
+                    term2.for_each_index([=, this](const auto idx) {
+                        u8"mi,mj -> ij"_einsum((*term2_ptr)[idx],
                                                coconf_metric_[idx],
-                                               contraconf_christoffel_trace_derivative[idx]);
+                                               (*contraconf_christoffel_trace_derivative_ptr)[idx]);
                     });
 
-                    term3.for_each_index([&](const auto idx) {
-                        u8"mi,mj -> ji"_einsum(term3[idx],
+                    term3.for_each_index([=, this](const auto idx) {
+                        u8"mi,mj -> ji"_einsum((*term3_ptr)[idx],
                                                coconf_metric_[idx],
-                                               contraconf_christoffel_trace_derivative[idx]);
+                                               (*contraconf_christoffel_trace_derivative_ptr)[idx]);
                     });
 
-                    term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] +=
-                            (real{ 1 } / real{ 2 }) * (term2[idx][tidx] + term3[idx][tidx]);
+                    term1.for_each_index([=](const auto idx, const auto tidx) {
+                        (*term1_ptr)[idx][tidx] +=
+                            (real{ 1 } / real{ 2 })
+                            * ((*term2_ptr)[idx][tidx] + (*term3_ptr)[idx][tidx]);
                     });
+                    tensor_buffer_queue.wait();
                 }
 
                 { // terms 4 and 5
-                    auto term4 = buffer2(grid_size_);
-                    auto term5 = buffer2(grid_size_);
+                    auto term4            = buffer2(grid_size_);
+                    auto term5            = buffer2(grid_size_);
+                    auto* const term4_ptr = &term4;
+                    auto* const term5_ptr = &term5;
 
-                    term4.for_each_index([&](const auto idx) {
-                        u8"ab,cm,cab,ijm -> ij"_einsum(term4[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       coconf_christoffels[idx],
-                                                       coconf_christoffels[idx]);
+                    term4.for_each_index([=](const auto idx) {
+                        u8"ab,cm,cab,ijm -> ij"_einsum((*term4_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx]);
                     });
 
-                    term5.for_each_index([&](const auto idx) {
-                        u8"ab,cm,cab,ijm -> ji"_einsum(term5[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       coconf_christoffels[idx],
-                                                       coconf_christoffels[idx]);
+                    term5.for_each_index([=](const auto idx) {
+                        u8"ab,cm,cab,ijm -> ji"_einsum((*term5_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx]);
                     });
 
-                    term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] +=
-                            (real{ 1 } / real{ 2 }) * (term4[idx][tidx] + term5[idx][tidx]);
+                    term1.for_each_index([=](const auto idx, const auto tidx) {
+                        (*term1_ptr)[idx][tidx] +=
+                            (real{ 1 } / real{ 2 })
+                            * ((*term4_ptr)[idx][tidx] + (*term5_ptr)[idx][tidx]);
                     });
+
+                    tensor_buffer_queue.wait();
                 }
 
                 { // terms 6 and 7
-                    auto term6 = buffer2(grid_size_);
-                    auto term7 = buffer2(grid_size_);
+                    auto term6            = buffer2(grid_size_);
+                    auto term7            = buffer2(grid_size_);
+                    auto* const term6_ptr = &term6;
+                    auto* const term7_ptr = &term7;
 
-                    term6.for_each_index([&](const auto idx) {
-                        u8"ab,nm,ani,jbm -> ij"_einsum(term6[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       coconf_christoffels[idx],
-                                                       coconf_christoffels[idx]);
+                    term6.for_each_index([=](const auto idx) {
+                        u8"ab,nm,ani,jbm -> ij"_einsum((*term6_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx]);
                     });
 
-                    term7.for_each_index([&](const auto idx) {
-                        u8"ab,nm,ani,jbm -> ji"_einsum(term6[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       coconf_christoffels[idx],
-                                                       coconf_christoffels[idx]);
+                    term7.for_each_index([=](const auto idx) {
+                        u8"ab,nm,ani,jbm -> ji"_einsum((*term6_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx]);
                     });
 
-                    term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] += term6[idx][tidx] + term7[idx][tidx];
+                    term1.for_each_index([=](const auto idx, const auto tidx) {
+                        (*term1_ptr)[idx][tidx] +=
+                            (*term6_ptr)[idx][tidx] + (*term7_ptr)[idx][tidx];
                     });
+
+                    tensor_buffer_queue.wait();
                 }
 
                 { // term 8
-                    auto term8 = buffer2(grid_size_);
+                    auto term8            = buffer2(grid_size_);
+                    auto* const term8_ptr = &term8;
 
-                    term8.for_each_index([&](const auto idx) {
-                        u8"ab,nm,ain,bjm -> ij"_einsum(term8[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       contraconf_spatial_metric[idx],
-                                                       coconf_christoffels[idx],
-                                                       coconf_christoffels[idx]);
+                    term8.for_each_index([=](const auto idx) {
+                        u8"ab,nm,ain,bjm -> ij"_einsum((*term8_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*contraconf_metric_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx],
+                                                       (*coconf_christoffels_ptr)[idx]);
                     });
 
                     term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] += term8[idx][tidx];
+                        (*term1_ptr)[idx][tidx] += (*term8_ptr)[idx][tidx];
                     });
+
+                    tensor_buffer_queue.wait();
                 }
 
                 return term1;
             });
+            auto* const coconf_R_ptr = &coconf_R;
 
-            const auto coconf_W2Rw = std::invoke([&] {
-                const auto coconf_DiDj_W = std::invoke([&] {
-                    auto christoffel_term = buffer2(grid_size_);
-                    christoffel_term.for_each_index([&](const auto idx) {
-                        u8"ij,jab,i"_einsum(christoffel_term[idx],
-                                            contraconf_spatial_metric[idx],
-                                            coconf_christoffels[idx],
-                                            W_derivative[idx]);
+            const auto coconf_W2Rw      = std::invoke([&] {
+                const auto coconf_DiDj_W      = std::invoke([&] {
+                    auto christoffel_term            = buffer2(grid_size_);
+                    auto* const christoffel_term_ptr = &christoffel_term;
+
+                    christoffel_term.for_each_index([=](const auto idx) {
+                        u8"ij,jab,i"_einsum((*christoffel_term_ptr)[idx],
+                                            (*contraconf_metric_ptr)[idx],
+                                            (*coconf_christoffels_ptr)[idx],
+                                            (*W_derivative_ptr)[idx]);
                     });
 
                     auto W_2nd_derivative =
                         finite_difference::periodic_4th_order_central_1st_derivative(W_derivative);
+                    auto* const W_2nd_derivative_ptr = &W_2nd_derivative;
 
-                    W_2nd_derivative.for_each_index([&](const auto idx, const auto tidx) {
-                        W_2nd_derivative[idx][tidx] -= christoffel_term[idx][tidx];
+                    W_2nd_derivative.for_each_index([=](const auto idx, const auto tidx) {
+                        (*W_2nd_derivative_ptr)[idx][tidx] -= (*christoffel_term_ptr)[idx][tidx];
                     });
 
+                    tensor_buffer_queue.wait();
                     return W_2nd_derivative;
                 });
+                auto* const coconf_DiDj_W_ptr = &coconf_DiDj_W;
 
-                auto term1 = coconf_DiDj_W;
+                auto term1            = coconf_DiDj_W;
+                auto* const term1_ptr = &term1;
 
                 { // term 2
-                    auto term2 = buffer2(grid_size_);
-                    term2.for_each_index([&](const auto idx) {
-                        u8"ij,nm,nm"_einsum(term2[idx],
+                    auto term2            = buffer2(grid_size_);
+                    auto* const term2_ptr = &term2;
+
+                    term2.for_each_index([=, this](const auto idx) {
+                        u8"ij,nm,nm"_einsum((*term2_ptr)[idx],
                                             coconf_metric_[idx],
-                                            contraconf_spatial_metric[idx],
-                                            coconf_DiDj_W[idx]);
+                                            (*contraconf_metric_ptr)[idx],
+                                            (*coconf_DiDj_W_ptr)[idx]);
                     });
 
-                    term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] = W_[idx][] * (term1[idx][tidx] - term2[idx][tidx]);
+                    term1.for_each_index([=, this](const auto idx, const auto tidx) {
+                        (*term1_ptr)[idx][tidx] =
+                            W_[idx][] * ((*term1_ptr)[idx][tidx] - (*term2_ptr)[idx][tidx]);
                     });
+
+                    tensor_buffer_queue.wait();
                 }
 
                 { // term 3
-                    auto term3 = buffer2(grid_size_);
-                    term3.for_each_index([&](const auto idx) {
-                        u8",ij,mn,m,n"_einsum(term3[idx],
+                    auto term3            = buffer2(grid_size_);
+                    auto* const term3_ptr = &term3;
+                    term3.for_each_index([=, this](const auto idx) {
+                        u8",ij,mn,m,n"_einsum((*term3_ptr)[idx],
                                               two,
                                               coconf_metric_[idx],
-                                              contraconf_spatial_metric[idx],
-                                              W_derivative[idx],
-                                              W_derivative[idx]);
+                                              (*contraconf_metric_ptr)[idx],
+                                              (*W_derivative_ptr)[idx],
+                                              (*W_derivative_ptr)[idx]);
                     });
 
-                    term1.for_each_index([&](const auto idx, const auto tidx) {
-                        term1[idx][tidx] -= term3[idx][tidx];
+                    term1.for_each_index([=](const auto idx, const auto tidx) {
+                        (*term1_ptr)[idx][tidx] -= (*term3_ptr)[idx][tidx];
                     });
+
+                    tensor_buffer_queue.wait();
                 }
 
                 return term1;
             });
+            auto* const coconf_W2Rw_ptr = &coconf_W2Rw;
 
-            auto lapseW2R = buffer2(grid_size_);
-            lapseW2R.for_each_index([&](const auto idx, const auto tidx) {
-                lapseW2R[idx][tidx] =
+            auto lapseW2R            = buffer2(grid_size_);
+            auto* const lapseW2R_ptr = &lapseW2R;
+
+            lapseW2R.for_each_index([=, this](const auto idx, const auto tidx) {
+                (*lapseW2R_ptr)[idx][tidx] =
                     lapse_[idx][]
-                    * (coconf_W2Rw[idx][tidx] + W_[idx][] * W_[idx][] * coconf_R[idx][tidx]);
+                    * ((*coconf_W2Rw_ptr)[idx][tidx]
+                       + W_[idx][] * W_[idx][] * (*coconf_R_ptr)[idx][tidx]);
             });
 
-            lapseW2R.for_each_index([&](const auto idx, const auto tidx) {
-                lapseW2R[idx][tidx] -= co_W2DiDj_lapse[idx][tidx];
+            lapseW2R.for_each_index([=](const auto idx, const auto tidx) {
+                (*lapseW2R_ptr)[idx][tidx] -= (*co_W2DiDj_lapse_ptr)[idx][tidx];
             });
 
+            tensor_buffer_queue.wait();
             return lapseW2R;
         });
 
-        const auto trace_remover = std::invoke([&] {
-            auto temp = buffer2(grid_size_);
+        auto* const TFterm_ptr = &TFterm;
+
+        const auto trace_remover      = std::invoke([&] {
+            auto temp            = buffer2(grid_size_);
+            auto* const temp_ptr = &temp;
             // It does not matter if trace remover is calculated with conformal or
             // nor conformal metric. At least with W^2, they cancel out:
             // g_{ij}g^{nm} = \tilde{g}_{ij}\tilde{g}^{nm}
-            temp.for_each_index([&](const auto idx) {
+            temp.for_each_index([=, this](const auto idx) {
                 static constexpr auto third =
                     constant_geometric_mdspan<0, 3, real{ 1 } / real{ 3 }>();
-                u8",ij,nm,nm"_einsum(temp[idx],
+                u8",ij,nm,nm"_einsum((*temp_ptr)[idx],
                                      third,
                                      coconf_metric_[idx],
-                                     contraconf_spatial_metric[idx],
-                                     TFterm[idx]);
+                                     (*contraconf_metric_ptr)[idx],
+                                     (*TFterm_ptr)[idx]);
             });
+
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const trace_remover_ptr = &trace_remover;
 
-        dfdt.coconf_A.for_each_index([&](const auto idx, const auto tidx) {
-            dfdt.coconf_A[idx][tidx] =
-                term1[idx][tidx] + TFterm[idx][tidx] - trace_remover[idx][tidx];
+        dfdt.coconf_A.for_each_index([=](const auto idx, const auto tidx) {
+            dfdt_ptr->coconf_A[idx][tidx] = (*term1_ptr)[idx][tidx] + (*TFterm_ptr)[idx][tidx]
+                                            - (*trace_remover_ptr)[idx][tidx];
         });
+
+        tensor_buffer_queue.wait();
     }
 
-    const auto K_derivative = finite_difference::periodic_4th_order_central_1st_derivative(K_);
+    const auto K_derivative      = finite_difference::periodic_4th_order_central_1st_derivative(K_);
+    auto* const K_derivative_ptr = &K_derivative;
 
     { // calculate dfdt.contraconf_christoffel_trace
-        auto term1 = std::invoke([&] {
-            auto tempA = W_derivative;
-            tempA.for_each_index([&](const auto idx, const auto tidx) {
-                tempA[idx][tidx] *= real{ -6 } * lapse_[idx][] / W_[idx][];
-                tempA[idx][tidx] += real{ -2 } * lapse_derivative[idx][tidx];
+        auto term1            = std::invoke([&] {
+            auto tempA            = W_derivative;
+            auto* const tempA_ptr = &tempA;
+            tempA.for_each_index([=, this](const auto idx, const auto tidx) {
+                (*tempA_ptr)[idx][tidx] *= real{ -6 } * lapse_[idx][] / W_[idx][];
+                (*tempA_ptr)[idx][tidx] += real{ -2 } * (*lapse_derivative_ptr)[idx][tidx];
             });
 
-            auto tempB = buffer1(grid_size_);
-            tempB.for_each_index([&](const auto idx) {
-                u8"im,m"_einsum(tempB[idx], contraconf_A[idx], tempA[idx]);
+            auto tempB            = buffer1(grid_size_);
+            auto* const tempB_ptr = &tempB;
+            tempB.for_each_index([=](const auto idx) {
+                u8"im,m"_einsum((*tempB_ptr)[idx], (*contraconf_A_ptr)[idx], (*tempA_ptr)[idx]);
             });
             return tempB;
+
+            tensor_buffer_queue.wait();
         });
+        auto* const term1_ptr = &term1;
 
         { // term 2
-            auto term2 = buffer1(grid_size_);
-            term2.for_each_index([&](const auto idx) {
-                u8",,ia,abc,bc"_einsum(term2[idx],
+            auto term2            = buffer1(grid_size_);
+            auto* const term2_ptr = &term2;
+            term2.for_each_index([=, this](const auto idx) {
+                u8",,ia,abc,bc"_einsum((*term2_ptr)[idx],
                                        two,
                                        lapse_[idx],
-                                       contraconf_spatial_metric[idx],
-                                       coconf_christoffels[idx],
-                                       contraconf_A[idx]);
+                                       (*contraconf_metric_ptr)[idx],
+                                       (*coconf_christoffels_ptr)[idx],
+                                       (*contraconf_A_ptr)[idx]);
             });
 
-            term1.for_each_index(
-                [&](const auto idx, const auto tidx) { term1[idx][tidx] += term2[idx][tidx]; });
+            term1.for_each_index([=](const auto idx, const auto tidx) {
+                (*term1_ptr)[idx][tidx] += (*term2_ptr)[idx][tidx];
+            });
+
+            tensor_buffer_queue.wait();
         }
 
         { // term 3
 
-            auto term3 = buffer1(grid_size_);
-            term3.for_each_index([&](const auto idx) {
-                u8"im,m"_einsum(term3[idx], contraconf_spatial_metric[idx], K_derivative[idx]);
+            auto term3            = buffer1(grid_size_);
+            auto* const term3_ptr = &term3;
+            term3.for_each_index([=](const auto idx) {
+                u8"im,m"_einsum((*term3_ptr)[idx],
+                                (*contraconf_metric_ptr)[idx],
+                                (*K_derivative_ptr)[idx]);
             });
 
-            dfdt.contraconf_christoffel_trace.for_each_index([&](const auto idx, const auto tidx) {
-                dfdt.contraconf_christoffel_trace[idx][tidx] =
-                    term1[idx][tidx] - (real{ 4 } * lapse_[idx][] / real{ 3 }) * term3[idx][tidx];
-            });
+            dfdt.contraconf_christoffel_trace.for_each_index(
+                [=, this](const auto idx, const auto tidx) {
+                    dfdt_ptr->contraconf_christoffel_trace[idx][tidx] =
+                        (*term1_ptr)[idx][tidx]
+                        - (real{ 4 } * lapse_[idx][] / real{ 3 }) * (*term3_ptr)[idx][tidx];
+                });
+
+            tensor_buffer_queue.wait();
         }
     }
 
     { // momentum constraint
-        const auto contracoconf_A = std::invoke([&] {
-            auto temp = buffer2(grid_size_);
-            temp.for_each_index([&](const auto idx) {
-                u8"ij,jk"_einsum(temp[idx], contraconf_spatial_metric[idx], coconf_A_[idx]);
+        const auto contracoconf_A      = std::invoke([&] {
+            auto temp            = buffer2(grid_size_);
+            auto* const temp_ptr = &temp;
+            temp.for_each_index([=, this](const auto idx) {
+                u8"ij,jk"_einsum((*temp_ptr)[idx], (*contraconf_metric_ptr)[idx], coconf_A_[idx]);
             });
+
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const contracoconf_A_ptr = &contracoconf_A;
 
-        auto term1 = std::invoke([&] {
+        auto term1            = std::invoke([&] {
             const auto Ad =
                 finite_difference::periodic_4th_order_central_1st_derivative(contracoconf_A);
+
             auto temp = buffer1(grid_size_);
-            temp.for_each_index([&](const auto idx) { u8"jij"_einsum(temp[idx], Ad[idx]); });
+
+            auto* const Ad_ptr   = &Ad;
+            auto* const temp_ptr = &temp;
+
+            temp.for_each_index(
+                [=](const auto idx) { u8"jij"_einsum((*temp_ptr)[idx], (*Ad_ptr)[idx]); });
+
+            tensor_buffer_queue.wait();
             return temp;
         });
+        auto* const term1_ptr = &term1;
 
         { // term 2
             const auto coconf_A_derivative =
                 finite_difference::periodic_4th_order_central_1st_derivative(coconf_A_);
-
             auto term2 = buffer1(grid_size_);
-            term2.for_each_index([&](const auto idx) {
-                u8",jk,jki"_einsum(term2[idx],
+
+            auto* const coconf_A_derivative_ptr = &coconf_A_derivative;
+            auto* const term2_ptr               = &term2;
+
+            term2.for_each_index([=](const auto idx) {
+                u8",jk,jki"_einsum((*term2_ptr)[idx],
                                    minus_half,
-                                   contraconf_spatial_metric[idx],
-                                   coconf_A_derivative[idx]);
+                                   (*contraconf_metric_ptr)[idx],
+                                   (*coconf_A_derivative_ptr)[idx]);
             });
-            term1.for_each_index(
-                [&](const auto idx, const auto tidx) { term1[idx][tidx] += term2[idx][tidx]; });
+            term1.for_each_index([=](const auto idx, const auto tidx) {
+                (*term1_ptr)[idx][tidx] += (*term2_ptr)[idx][tidx];
+            });
+
+            tensor_buffer_queue.wait();
         }
 
         { // terms 3 and 4
-            auto term3 = buffer1(grid_size_);
-            term3.for_each_index([&](const auto idx) {
-                u8"j,ji"_einsum(term3[idx], W_derivative[idx], contracoconf_A[idx]);
+            auto term3            = buffer1(grid_size_);
+            auto* const term3_ptr = &term3;
+
+            term3.for_each_index([=](const auto idx) {
+                u8"j,ji"_einsum((*term3_ptr)[idx],
+                                (*W_derivative_ptr)[idx],
+                                (*contracoconf_A_ptr)[idx]);
             });
 
-            term3.for_each_index([&](const auto idx, const auto tidx) {
+            term3.for_each_index([=, this](const auto idx, const auto tidx) {
                 const auto c = (real{ 2 } / real{ 3 }) * K_derivative[idx][tidx];
-                term1[idx][tidx] += real{ -3 } * term3[idx][tidx] / W_[idx][] - c;
+                (*term1_ptr)[idx][tidx] += real{ -3 } * (*term3_ptr)[idx][tidx] / W_[idx][] - c;
             });
+
+            tensor_buffer_queue.wait();
         }
 
         constraints.momentum = std::move(term1);
     }
 
     { // momentum constraint damping
-        const auto DiMj = std::invoke([&] {
+        const auto DiMj      = std::invoke([&] {
             auto M_derivative =
                 finite_difference::periodic_4th_order_central_1st_derivative(constraints.momentum);
+            auto* const M_derivative_ptr = &M_derivative;
 
-            const auto chris_term = std::invoke([&] {
-                auto temp = buffer2(grid_size_);
-                temp.for_each_index([&](const auto idx) {
-                    u8"ab,aij,b"_einsum(temp[idx],
-                                        contraconf_spatial_metric[idx],
-                                        coconf_christoffels[idx],
-                                        constraints.momentum[idx]);
+            const auto chris_term      = std::invoke([&] {
+                auto temp            = buffer2(grid_size_);
+                auto* const temp_ptr = &temp;
+                temp.for_each_index([=](const auto idx) {
+                    u8"ab,aij,b"_einsum((*temp_ptr)[idx],
+                                        (*contraconf_metric_ptr)[idx],
+                                        (*coconf_christoffels_ptr)[idx],
+                                        constraints_ptr->momentum[idx]);
                 });
+
+                tensor_buffer_queue.wait();
                 return temp;
             });
+            auto* const chris_term_ptr = &chris_term;
 
-            M_derivative.for_each_index([&](const auto idx, const auto tidx) {
-                M_derivative[idx][tidx] -= chris_term[idx][tidx];
+            M_derivative.for_each_index([=](const auto idx, const auto tidx) {
+                (*M_derivative_ptr)[idx][tidx] -= (*chris_term_ptr)[idx][tidx];
             });
 
+            tensor_buffer_queue.wait();
             return M_derivative;
         });
+        auto* const DiMj_ptr = &DiMj;
 
         // Used in NR101.
         static constexpr auto damping_coeff = real{ 0.025 };
 
-        dfdt.coconf_A.for_each_index([&](const auto idx, const auto tidx) {
-            const auto symmDiMj = real{ 0.5 } * (DiMj[idx][tidx] + DiMj[idx][tidx]);
-            dfdt.coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
+        dfdt.coconf_A.for_each_index([=, this](const auto idx, const auto tidx) {
+            const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
+            dfdt_ptr->coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
         });
+
+        tensor_buffer_queue.wait();
     }
 
     return { std::move(dfdt), std::move(constraints) };

@@ -69,15 +69,15 @@ class tensor_buffer {
           Ny_{ Ny },
           Nz_{ Nz },
           buffs_{ [&]<std::size_t... I>(std::index_sequence<I...>) {
-        if constexpr (std::same_as<Allocator,
-                                   sycl::usm_allocator<real, sycl::usm::alloc::shared>>) {
-            return std::array{ (
-                std::ignore = I,
-                vec(total_elements(),
-                    sycl::usm_allocator<real, sycl::usm::alloc::shared>(tensor_buffer_queue)))... };
-        } else {
-            return std::array{ (std::ignore = I, vec(total_elements()))... };
-        }
+              if constexpr (std::same_as<Allocator,
+                                         sycl::usm_allocator<real, sycl::usm::alloc::shared>>) {
+                  return std::array{ (std::ignore = I,
+                                      vec(total_elements(),
+                                          sycl::usm_allocator<real, sycl::usm::alloc::shared>(
+                                              tensor_buffer_queue)))... };
+              } else {
+                  return std::array{ (std::ignore = I, vec(total_elements()))... };
+              }
           }(std::make_index_sequence<std::tuple_size<decltype(buffs_)>{}>()) } {}
 
     [[nodiscard]]
@@ -115,16 +115,13 @@ class tensor_buffer {
         if constexpr (std::invocable<F, grid_index>) {
             tensor_buffer_queue.parallel_for(sycl::range{ self.Nx_, self.Ny_, self.Nz_ },
                                              [f = std::forward<F>(f)](sycl::id<3> idx) {
-                                                 std::invoke(f,
-                                                             grid_index{ idx[0], idx[1], idx[2] });
+                                                 f(grid_index{ idx[0], idx[1], idx[2] });
                                              });
         } else {
             for (const auto tidx : idg::sstd::geometric_index_space<rank, D>()) {
                 tensor_buffer_queue.parallel_for(
                     sycl::range{ self.Nx_, self.Ny_, self.Nz_ },
-                    [=](sycl::id<3> idx) {
-                        std::invoke(f, grid_index{ idx[0], idx[1], idx[2] }, tidx);
-                    });
+                    [=](sycl::id<3> idx) { f(grid_index{ idx[0], idx[1], idx[2] }, tidx); });
             }
         }
     }

@@ -7,7 +7,10 @@
 #include <print>
 #include <ranges>
 
+#include <sycl/sycl.hpp>
+
 #include "grid_types.hpp"
+#include "tensor_buffer.hpp"
 #include "w2_bssn_uniform_grid.hpp"
 
 static constexpr auto N          = 20uz;
@@ -16,6 +19,9 @@ static constexpr auto time_steps = 10uz;
 static constexpr auto dt       = real{ 0.001 * N };
 static constexpr auto substeps = 2uz;
 static constexpr auto W_clamp  = real{ 0.0001 };
+
+sycl::queue tensor_buffer_queue =
+    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main() {
@@ -36,7 +42,7 @@ main() {
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();
 
-        step_log_file << std::format("Starting step {}.\n", step_ordinal);
+        step_log_file << std::format("Starting step {}.\n", step_ordinal) << std::flush;
 
         // take first substep
 
@@ -58,6 +64,8 @@ main() {
         }
 
         base = std::move(iter_step);
+
+        tensor_buffer_queue.wait();
 
         const auto stop = std::chrono::steady_clock::now();
 

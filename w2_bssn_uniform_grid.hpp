@@ -1,9 +1,10 @@
-
 #pragma once
 
 #include <cstddef>
 #include <filesystem>
 #include <vector>
+
+#include <sycl/sycl.hpp>
 
 #include "grid_types.hpp"
 #include "tensor_buffer.hpp"
@@ -29,13 +30,13 @@ struct minkowski_spacetime_tag {};
 /// stable if either ˜Γi is treated as an independent variable
 /// everywhere, or if ˜Γi is recomputed from ˜γij before each
 /// time step.
-
 class w2_bssn_uniform_grid {
   public:
-    using buffer0 = tensor_buffer<0, 3, real, std::allocator<real>>;
-    using buffer1 = tensor_buffer<1, 3, real, std::allocator<real>>;
-    using buffer2 = tensor_buffer<2, 3, real, std::allocator<real>>;
-    using buffer3 = tensor_buffer<3, 3, real, std::allocator<real>>;
+    using allocator = sycl::usm_allocator<real, sycl::usm::alloc::shared>;
+    using buffer0   = tensor_buffer<0, 3, real, allocator>;
+    using buffer1   = tensor_buffer<1, 3, real, allocator>;
+    using buffer2   = tensor_buffer<2, 3, real, allocator>;
+    using buffer3   = tensor_buffer<3, 3, real, allocator>;
 
     struct time_derivative_type {
         w2_bssn_uniform_grid::buffer0 lapse;
