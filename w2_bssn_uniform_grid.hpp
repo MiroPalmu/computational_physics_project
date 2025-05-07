@@ -43,7 +43,7 @@ class w2_bssn_uniform_grid {
     template<std::size_t rank, typename... T>
     static auto allocate_buffer(T&&... args) {
         return std::allocate_shared<tensor_buffer<rank, 3, real, allocator>>(
-            tensor_buffer_queue,
+            allocator{ tensor_buffer_queue },
             std::forward<T>(args)...);
     }
 
