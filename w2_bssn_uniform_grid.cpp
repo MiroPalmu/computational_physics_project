@@ -744,7 +744,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
             });
 
             term3_ptr->for_each_index([=, this](const auto idx, const auto tidx) {
-                const auto c = (real{ 2 } / real{ 3 }) * K_derivative_ptr[idx][tidx];
+                const auto c = (real{ 2 } / real{ 3 }) * (*K_derivative_ptr)[idx][tidx];
                 (*term1_ptr)[idx][tidx] += real{ -3 } * (*term3_ptr)[idx][tidx] / W_[idx][] - c;
             });
         }
