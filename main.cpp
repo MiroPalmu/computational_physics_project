@@ -61,7 +61,7 @@ main() {
             iter_step->enforce_algebraic_constraints();
             auto pre = iter_step->pre_calculations();
 
-            if (substep_ordinal == substeps - 1uz) { pre.dfdt->kreiss_oliger_6th_order(*base); }
+            if (substep_ordinal == substeps - 1uz) { pre.dfdt->kreiss_oliger_6th_order(base); }
 
             iter_step = base->euler_step(pre.dfdt, dt);
         }
