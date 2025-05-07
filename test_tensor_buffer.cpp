@@ -2,6 +2,7 @@
 
 #include <format>
 #include <print>
+#include <memory>
 #include <string>
 
 #include <sycl/sycl.hpp>
@@ -11,12 +12,14 @@
 #include "tensor_buffer.hpp"
 
 sycl::queue tensor_buffer_queue =
-    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
+    sycl::queue(sycl::gpu_selector_v, { sycl::property::queue::in_order{} });
+
+using allocator = sycl::usm_allocator<double, sycl::usm::alloc::shared>;
 
 int
 main() {
     struct Foo {
-        tensor_buffer<0, 4, double, std::allocator<double>> scalar_buff{ 2, 2, 2 };
+        tensor_buffer<0, 4, double, allocator> scalar_buff{ 2, 2, 2 };
 
         void operator()() {
             scalar_buff.for_each_index([this](const grid_index idx, const tensor_index<0> tidx) {
@@ -32,8 +35,8 @@ main() {
         }
     };
 
-    auto f = Foo{};
-    f();
+    auto f = std::allocate_shared<Foo>(allocator{tensor_buffer_queue});
+    (*f)();
 
     /*
 
