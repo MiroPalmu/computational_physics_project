@@ -266,7 +266,7 @@ w2_bssn_uniform_grid::enforce_algebraic_constraints() {
     // g_{ij}g^{nm} = \tilde{g}_{ij}\tilde{g}^{nm}
     trace_remover_ptr->for_each_index([=, this](const auto idx) {
         static constexpr auto third = constant_geometric_mdspan<0, 3, real{ 1 } / real{ 3 }>();
-        u8",ij,nm,nm"_einsum((*temp_ptr)[idx],
+        u8",ij,nm,nm"_einsum((*trace_remover_ptr)[idx],
                              third,
                              coconf_metric_[idx],
                              (*contraconf_metric_ptr)[idx],
