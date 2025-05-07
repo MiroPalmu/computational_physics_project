@@ -61,9 +61,11 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         auto xtidx = derivative_tidx_type{};
         auto ytidx = derivative_tidx_type{};
         auto ztidx = derivative_tidx_type{};
-        rn::copy(tidx, xtidx.begin());
-        rn::copy(tidx, ytidx.begin());
-        rn::copy(tidx, ztidx.begin());
+        for (auto n = 0uz; n < tidx.size(); ++n) {
+            xtidx[n] = tidx[n];
+            ytidx[n] = tidx[n];
+            ztidx[n] = tidx[n];
+        }
         xtidx.back() = 0uz;
         ytidx.back() = 1uz;
         ztidx.back() = 2uz;
@@ -395,7 +397,10 @@ w2_bssn_uniform_grid::pre_calculations() const {
         const auto term2_ptr = std::invoke([&] {
             auto temp_ptr = allocate_buffer<0>(grid_size_);
             temp_ptr->for_each_index([=, this](const auto idx) {
-                u8",nm,nm"_einsum((*temp_ptr)[idx], lapse_[idx], (*contraconf_A_ptr)[idx], coconf_A_[idx]);
+                u8",nm,nm"_einsum((*temp_ptr)[idx],
+                                  lapse_[idx],
+                                  (*contraconf_A_ptr)[idx],
+                                  coconf_A_[idx]);
             });
             return temp_ptr;
         });
@@ -559,7 +564,8 @@ w2_bssn_uniform_grid::pre_calculations() const {
                     });
 
                     auto W_2nd_derivative_ptr =
-                        finite_difference::periodic_4th_order_central_1st_derivative(*W_derivative_ptr);
+                        finite_difference::periodic_4th_order_central_1st_derivative(
+                            *W_derivative_ptr);
 
                     W_2nd_derivative_ptr->for_each_index([=](const auto idx, const auto tidx) {
                         (*W_2nd_derivative_ptr)[idx][tidx] -= (*christoffel_term_ptr)[idx][tidx];
@@ -754,8 +760,8 @@ w2_bssn_uniform_grid::pre_calculations() const {
 
     { // momentum constraint damping
         const auto DiMj_ptr = std::invoke([&] {
-            auto M_derivative_ptr =
-                finite_difference::periodic_4th_order_central_1st_derivative(constraints_ptr->momentum);
+            auto M_derivative_ptr = finite_difference::periodic_4th_order_central_1st_derivative(
+                constraints_ptr->momentum);
 
             const auto chris_term_ptr = std::invoke([&] {
                 auto temp_ptr = allocate_buffer<2>(grid_size_);
