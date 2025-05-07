@@ -21,7 +21,7 @@ static constexpr auto substeps = 2uz;
 static constexpr auto W_clamp  = real{ 0.0001 };
 
 sycl::queue tensor_buffer_queue =
-    sycl::queue(sycl::gpu_selector_v, { sycl::property::queue::in_order{} });
+    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main() {
@@ -37,7 +37,7 @@ main() {
 
     auto t = real{ 0 };
 
-    auto base = allocate_shared_w2({ N, N, N }, minkowski_spacetime_tag{});
+    auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
 
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();
@@ -48,9 +48,12 @@ main() {
 
         base->clamp_W(W_clamp);
         base->enforce_algebraic_constraints();
-        const auto pre1 = base->pre_calculations();
 
-        auto iter_step = base->euler_step(pre1->dfdt, dt);
+        auto iter_step = [&] {
+            const auto pre1 = base->pre_calculations();
+
+            return base->euler_step(pre1.dfdt, dt);
+        }();
 
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {
@@ -58,9 +61,9 @@ main() {
             iter_step->enforce_algebraic_constraints();
             auto pre = iter_step->pre_calculations();
 
-            if (substep_ordinal == substeps - 1uz) { pre->dfdt.kreiss_oliger_6th_order(*base); }
+            if (substep_ordinal == substeps - 1uz) { pre.dfdt->kreiss_oliger_6th_order(base); }
 
-            iter_step = base->euler_step(pre->dfdt, dt);
+            iter_step = base->euler_step(pre.dfdt, dt);
         }
 
         base = std::move(iter_step);

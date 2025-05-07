@@ -40,6 +40,13 @@ class w2_bssn_uniform_grid {
     using buffer2   = tensor_buffer<2, 3, real, allocator>;
     using buffer3   = tensor_buffer<3, 3, real, allocator>;
 
+    template<std::size_t rank, typename... T>
+    static auto allocate_buffer(T&&... args) {
+        return std::allocate_shared<tensor_buffer<rank, 3, real, allocator>>(
+            allocator{ tensor_buffer_queue },
+            std::forward<T>(args)...);
+    }
+
     struct time_derivative_type {
         w2_bssn_uniform_grid::buffer0 lapse;
         w2_bssn_uniform_grid::buffer0 W;
@@ -53,7 +60,7 @@ class w2_bssn_uniform_grid {
         time_derivative_type(const grid_size);
 
         /// Applies 6th order Kreiss-Oliger dissipation to derivatives.
-        void kreiss_oliger_6th_order(const w2_bssn_uniform_grid&);
+        void kreiss_oliger_6th_order(const std::shared_ptr<w2_bssn_uniform_grid>&);
     };
 
     friend time_derivative_type;
@@ -68,8 +75,8 @@ class w2_bssn_uniform_grid {
     };
 
     struct pre_calculations_type {
-        time_derivative_type dfdt;
-        constraints_type constraints;
+        std::shared_ptr<time_derivative_type> dfdt;
+        std::shared_ptr<constraints_type> constraints;
     };
 
   private:
@@ -91,10 +98,11 @@ class w2_bssn_uniform_grid {
     void beve_dump(const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
 
     [[nodiscard]]
-    std::shared_ptr<pre_calculations_type> pre_calculations() const;
+    pre_calculations_type pre_calculations() const;
 
     [[nodiscard]]
-    std::shared_ptr<w2_bssn_uniform_grid> euler_step(const time_derivative_type&, const real) const;
+    std::shared_ptr<w2_bssn_uniform_grid> euler_step(const std::shared_ptr<time_derivative_type>&,
+                                                     const real) const;
 
     void enforce_algebraic_constraints();
     void clamp_W(const real);
