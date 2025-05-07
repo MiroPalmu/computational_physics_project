@@ -137,7 +137,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, minkowski_spaceti
         coconf_metric_[idx][tidx] = static_cast<real>(tidx[0] == tidx[1]);
     });
 
-          /*
+    /*
     lapse_.for_each_index([this](const auto idx) { lapse_[idx][] = 1; });
 
     K_.for_each_index([this](const auto idx) { K_[idx][] = 0; });
@@ -293,10 +293,13 @@ w2_bssn_uniform_grid::enforce_algebraic_constraints() {
     tensor_buffer_queue.wait();
 }
 
-w2_bssn_uniform_grid::pre_calculations_type
+std::shared_ptr<w2_bssn_uniform_grid::pre_calculations_type>
 w2_bssn_uniform_grid::pre_calculations() const {
-    w2_bssn_uniform_grid::time_derivative_type dfdt(grid_size_);
-    auto constraints = constraints_type(grid_size_);
+    auto dfdt_ptr =
+        std::allocate_shared<time_derivative_type>(allocator{ tensor_buffer_queue }, grid_size_);
+
+    auto constraints_ptr =
+        std::allocate_shared<constraints_type>(allocator{ tensor_buffer_queue }, grid_size_);
 
     auto* const dfdt_ptr        = &dfdt;
     auto* const constraints_ptr = &constraints;
@@ -906,5 +909,10 @@ w2_bssn_uniform_grid::pre_calculations() const {
         tensor_buffer_queue.wait();
     }
 
-    return { std::move(dfdt), std::move(constraints) };
+    auto pre = std::allocate_shared<pre_calculations_type>(allocator{ tensor_buffer_queue });
+
+    pre->dfdt        = std::move(*dfdt_ptr);
+    pre->constraints = std::move(*constraints_ptr);
+
+    return pre;
 };

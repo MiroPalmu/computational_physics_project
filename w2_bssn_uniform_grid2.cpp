@@ -2,30 +2,29 @@
 
 #include <sycl/sycl.hpp>
 
-w2_bssn_uniform_grid
+std::shared_ptr<w2_bssn_uniform_grid>
 w2_bssn_uniform_grid::euler_step(const time_derivative_type& dfdt, const real dt) const {
-    auto f               = w2_bssn_uniform_grid{ *this };
-    auto* const f_ptr    = &f;
+    auto f_ptr           = allocate_shared_w2(*this);
     auto* const dfdt_ptr = &dfdt;
 
-    f.W_.for_each_index([=](const auto idx) {
+    f_ptr->W_.for_each_index([=](const auto idx) {
         f_ptr->W_[idx][] += dt * dfdt_ptr->W[idx][];
         f_ptr->lapse_[idx][] += dt * dfdt_ptr->lapse[idx][];
         f_ptr->K_[idx][] += dt * dfdt_ptr->K[idx][];
     });
 
-    f.contraconf_christoffel_trace_.for_each_index([=](const auto idx, const auto tidx) {
+    f_ptr->contraconf_christoffel_trace_.for_each_index([=](const auto idx, const auto tidx) {
         f_ptr->contraconf_christoffel_trace_[idx][tidx] +=
             dt * dfdt_ptr->contraconf_christoffel_trace[idx][tidx];
     });
 
-    f.coconf_A_.for_each_index([=](const auto idx, const auto tidx) {
+    f_ptr->coconf_A_.for_each_index([=](const auto idx, const auto tidx) {
         f_ptr->coconf_A_[idx][tidx] += dt * dfdt_ptr->coconf_A[idx][tidx];
         f_ptr->coconf_metric_[idx][tidx] += dt * dfdt_ptr->coconf_metric[idx][tidx];
     });
 
     tensor_buffer_queue.wait();
-    return f;
+    return f_ptr;
 }
 
 namespace finite_difference {

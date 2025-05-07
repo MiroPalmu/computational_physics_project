@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include <sycl/sycl.hpp>
@@ -89,11 +91,18 @@ class w2_bssn_uniform_grid {
     void beve_dump(const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
 
     [[nodiscard]]
-    pre_calculations_type pre_calculations() const;
+    std::shared_ptr<pre_calculations_type> pre_calculations() const;
 
     [[nodiscard]]
-    w2_bssn_uniform_grid euler_step(const time_derivative_type&, const real) const;
+    std::shared_ptr<w2_bssn_uniform_grid> euler_step(const time_derivative_type&, const real) const;
 
     void enforce_algebraic_constraints();
     void clamp_W(const real);
 };
+
+auto
+allocate_shared_w2(auto&&... args) {
+    return std::allocate_shared<w2_bssn_uniform_grid>(
+        w2_bssn_uniform_grid::allocator{ tensor_buffer_queue },
+        std::forward<decltype(args)>(args)...);
+}
