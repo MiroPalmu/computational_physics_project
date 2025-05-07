@@ -50,7 +50,7 @@ main() {
         base->enforce_algebraic_constraints();
         const auto pre1 = base->pre_calculations();
 
-        auto iter_step = base->euler_step(pre1->dfdt, dt);
+        auto iter_step = base->euler_step(pre1.dfdt, dt);
 
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {

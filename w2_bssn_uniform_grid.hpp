@@ -42,7 +42,7 @@ class w2_bssn_uniform_grid {
 
     template<std::size_t rank, typename... T>
     static auto allocate_buffer(T&&... args) {
-        return std::allocate_shared<tesnor_buffer<rank, 3, real, allocator>>(
+        return std::allocate_shared<tensor_buffer<rank, 3, real, allocator>>(
             tensor_buffer_queue,
             std::forward<T>(args)...);
     }
@@ -101,7 +101,8 @@ class w2_bssn_uniform_grid {
     pre_calculations_type pre_calculations() const;
 
     [[nodiscard]]
-    std::shared_ptr<w2_bssn_uniform_grid> euler_step(const time_derivative_type&, const real) const;
+    std::shared_ptr<w2_bssn_uniform_grid> euler_step(const std::shared_ptr<time_derivative_type>&,
+                                                     const real) const;
 
     void enforce_algebraic_constraints();
     void clamp_W(const real);

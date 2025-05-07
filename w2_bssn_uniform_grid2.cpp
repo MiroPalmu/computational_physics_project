@@ -3,10 +3,9 @@
 #include <sycl/sycl.hpp>
 
 std::shared_ptr<w2_bssn_uniform_grid>
-w2_bssn_uniform_grid::euler_step(const time_derivative_type& dfdt,
+w2_bssn_uniform_grid::euler_step(const std::shared_ptr<time_derivative_type>& dfdt_ptr,
                                  const real dt) const {
-    auto f_ptr = allocate_shared_w2(*this);
-    auto* const dfdt_ptr = &dfdt;
+    auto f_ptr           = allocate_shared_w2(*this);
 
     f_ptr->W_.for_each_index([=](const auto idx) {
         f_ptr->W_[idx][] += dt * dfdt_ptr->W[idx][];
@@ -24,9 +23,6 @@ w2_bssn_uniform_grid::euler_step(const time_derivative_type& dfdt,
         f_ptr->coconf_metric_[idx][tidx] += dt * dfdt_ptr->coconf_metric[idx][tidx];
     });
 
-    // We have to wait, because after return argument might move before kernel is executed.
-    // This is bad architecture, but too late to refactor whole thing.
-    tensor_buffer_queue.wait();
     return f_ptr;
 }
 
