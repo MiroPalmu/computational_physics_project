@@ -744,12 +744,12 @@ w2_bssn_uniform_grid::pre_calculations() const {
             });
 
             term3_ptr->for_each_index([=, this](const auto idx, const auto tidx) {
-                const auto c = (real{ 2 } / real{ 3 }) * K_derivative[idx][tidx];
+                const auto c = (real{ 2 } / real{ 3 }) * K_derivative_ptr[idx][tidx];
                 (*term1_ptr)[idx][tidx] += real{ -3 } * (*term3_ptr)[idx][tidx] / W_[idx][] - c;
             });
         }
 
-        constraints_ptr->momentum = std::move(term1_ptr);
+        constraints_ptr->momentum = std::move(*term1_ptr);
     }
 
     { // momentum constraint damping
@@ -779,7 +779,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
         // Used in NR101.
         static constexpr auto damping_coeff = real{ 0.025 };
 
-        dfdt_ptr->coconf_A_ptr->for_each_index([=, this](const auto idx, const auto tidx) {
+        dfdt_ptr->coconf_A.for_each_index([=, this](const auto idx, const auto tidx) {
             const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
             dfdt_ptr->coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
         });
