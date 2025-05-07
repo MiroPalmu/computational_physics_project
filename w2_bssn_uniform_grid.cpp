@@ -317,7 +317,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
     const auto co_W2DiDj_lapse_ptr = std::invoke([&] {
         const auto coconf_DiDj_lapse_ptr = std::invoke([&] {
             auto lapse_2nd_derivative_ptr =
-                finite_difference::periodic_4th_order_central_1st_derivative(lapse_derivative);
+                finite_difference::periodic_4th_order_central_1st_derivative(*lapse_derivative_ptr);
 
             auto christoffel_term_ptr = allocate_buffer<2>(grid_size_);
             christoffel_term_ptr->for_each_index([=](const auto idx) {
@@ -395,7 +395,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
         const auto term2_ptr = std::invoke([&] {
             auto temp_ptr = allocate_buffer<0>(grid_size_);
             temp_ptr->for_each_index([=, this](const auto idx) {
-                u8",nm,nm"_einsum((*temp_ptr)[idx], lapse_[idx], contraconf_A[idx], coconf_A_[idx]);
+                u8",nm,nm"_einsum((*temp_ptr)[idx], lapse_[idx], (*contraconf_A_ptr)[idx], coconf_A_[idx]);
             });
             return temp_ptr;
         });
@@ -408,7 +408,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
 
     static constexpr auto two = constant_geometric_mdspan<0, 3, real{ 2 }>();
     { // calculate dfdt_ptr->coconf_A
-        auto term1_ptr = allocate_buffer2(grid_size_);
+        auto term1_ptr = allocate_buffer<2>(grid_size_);
         term1_ptr->for_each_index([=, this](const auto idx) {
             u8",,ij"_einsum((*term1_ptr)[idx], lapse_[idx], K_[idx], coconf_A_[idx]);
         });
@@ -435,7 +435,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
                 auto term1_ptr = std::invoke([&] {
                     const auto coconf_metric_2nd_derivative_ptr =
                         finite_difference::periodic_4th_order_central_1st_derivative(
-                            coconf_metric_derivative);
+                            *coconf_metric_derivative_ptr);
 
                     auto temp_ptr = allocate_buffer<2>(grid_size_);
                     temp_ptr->for_each_index([=](const auto idx) {
@@ -559,7 +559,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
                     });
 
                     auto W_2nd_derivative_ptr =
-                        finite_difference::periodic_4th_order_central_1st_derivative(W_derivative);
+                        finite_difference::periodic_4th_order_central_1st_derivative(*W_derivative_ptr);
 
                     W_2nd_derivative_ptr->for_each_index([=](const auto idx, const auto tidx) {
                         (*W_2nd_derivative_ptr)[idx][tidx] -= (*christoffel_term_ptr)[idx][tidx];
@@ -708,7 +708,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
 
         auto term1_ptr = std::invoke([&] {
             const auto Ad_ptr =
-                finite_difference::periodic_4th_order_central_1st_derivative(contracoconf_A);
+                finite_difference::periodic_4th_order_central_1st_derivative(*contracoconf_A_ptr);
 
             auto temp_ptr = allocate_buffer<1>(grid_size_);
 
@@ -735,7 +735,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
         }
 
         { // terms 3 and 4
-            auto term3_ptr = buffer1(grid_size_);
+            auto term3_ptr = allocate_buffer<1>(grid_size_);
 
             term3_ptr->for_each_index([=](const auto idx) {
                 u8"j,ji"_einsum((*term3_ptr)[idx],
