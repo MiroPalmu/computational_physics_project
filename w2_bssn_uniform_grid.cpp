@@ -41,20 +41,20 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         const auto j = static_cast<std::ptrdiff_t>(juz);
         const auto k = static_cast<std::ptrdiff_t>(kuz);
 
-        const auto im2 = (i - 2) % fNx;
-        const auto im1 = (i - 1) % fNx;
-        const auto ip1 = (i + 1) % fNx;
-        const auto ip2 = (i + 2) % fNx;
+        const auto im2 = (fNx + i - 2) % fNx;
+        const auto im1 = (fNx + i - 1) % fNx;
+        const auto ip1 = (fNx + i + 1) % fNx;
+        const auto ip2 = (fNx + i + 2) % fNx;
 
-        const auto jm2 = (j - 2) % fNy;
-        const auto jm1 = (j - 1) % fNy;
-        const auto jp1 = (j + 1) % fNy;
-        const auto jp2 = (j + 2) % fNy;
+        const auto jm2 = (fNy + j - 2) % fNy;
+        const auto jm1 = (fNy + j - 1) % fNy;
+        const auto jp1 = (fNy + j + 1) % fNy;
+        const auto jp2 = (fNy + j + 2) % fNy;
 
-        const auto km2 = (k - 2) % fNz;
-        const auto km1 = (k - 1) % fNz;
-        const auto kp1 = (k + 1) % fNz;
-        const auto kp2 = (k + 2) % fNz;
+        const auto km2 = (fNz + k - 2) % fNz;
+        const auto km1 = (fNz + k - 1) % fNz;
+        const auto kp1 = (fNz + k + 1) % fNz;
+        const auto kp2 = (fNz + k + 2) % fNz;
 
         using derivative_tidx_type = std::array<std::size_t, rank + 1>;
 
