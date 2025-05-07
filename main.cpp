@@ -21,7 +21,7 @@ static constexpr auto substeps = 2uz;
 static constexpr auto W_clamp  = real{ 0.0001 };
 
 sycl::queue tensor_buffer_queue =
-    sycl::queue(sycl::gpu_selector_v, { sycl::property::queue::in_order{} });
+    sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main() {
@@ -37,7 +37,7 @@ main() {
 
     auto t = real{ 0 };
 
-    auto base = allocate_shared_w2({ N, N, N }, minkowski_spacetime_tag{});
+    auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
 
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();
