@@ -75,8 +75,8 @@ class w2_bssn_uniform_grid {
     };
 
     struct pre_calculations_type {
-        std::unique_ptr<time_derivative_type> dfdt;
-        std::unique_ptr<constraints_type> constraints;
+        std::shared_ptr<time_derivative_type> dfdt;
+        std::shared_ptr<constraints_type> constraints;
     };
 
   private:
