@@ -5,7 +5,7 @@
 std::shared_ptr<w2_bssn_uniform_grid>
 w2_bssn_uniform_grid::euler_step(const std::shared_ptr<time_derivative_type>& dfdt_ptr,
                                  const real dt) const {
-    auto f_ptr           = allocate_shared_w2(*this);
+    auto f_ptr = allocate_shared_w2(*this);
 
     f_ptr->W_.for_each_index([=](const auto idx) {
         f_ptr->W_[idx][] += dt * dfdt_ptr->W[idx][];
@@ -23,6 +23,7 @@ w2_bssn_uniform_grid::euler_step(const std::shared_ptr<time_derivative_type>& df
         f_ptr->coconf_metric_[idx][tidx] += dt * dfdt_ptr->coconf_metric[idx][tidx];
     });
 
+    tensor_buffer_queue.wait();
     return f_ptr;
 }
 
@@ -125,6 +126,7 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
             W[idx][] += coeff * (*W_derivative_sum_ptr)[idx][];
             K[idx][] += coeff * (*K_derivative_sum_ptr)[idx][];
         });
+        tensor_buffer_queue.wait();
     }
 
     {
@@ -136,6 +138,7 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
             contraconf_christoffel_trace[idx][tidx] +=
                 coeff * (*contraconf_christoffel_trace_derivative_sum_ptr)[idx][tidx];
         });
+        tensor_buffer_queue.wait();
     }
 
     {
@@ -146,8 +149,8 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
         coconf_metric.for_each_index([=, this](const auto idx, const auto tidx) {
             coconf_metric[idx][tidx] += coeff * (*coconf_metric_derivative_sum_ptr)[idx][tidx];
         });
+        tensor_buffer_queue.wait();
     }
-    tensor_buffer_queue.wait();
 }
 
 void
