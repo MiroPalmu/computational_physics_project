@@ -876,8 +876,8 @@ w2_bssn_uniform_grid::pre_calculations() const {
         // Used in NR101.
         static constexpr auto damping_coeff = real{ 0.025 };
 
-        dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, DiMj_ptr, dfdt_ptr),
-                                           this](const auto idx, const auto tidx) {
+        dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, dfdt_ptr), this](const auto idx,
+                                                                           const auto tidx) {
             const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
             dfdt_ptr->coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
         });
