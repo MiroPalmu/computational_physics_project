@@ -7,18 +7,19 @@ w2_bssn_uniform_grid::euler_step(const std::shared_ptr<time_derivative_type>& df
                                  const real dt) const {
     auto f_ptr = allocate_shared_w2(*this);
 
-    f_ptr->W_.for_each_index([=](const auto idx) {
+    f_ptr->W_.for_each_index([dt, SPTR(f_ptr, dfdt_ptr)](const auto idx) {
         f_ptr->W_[idx][] += dt * dfdt_ptr->W[idx][];
         f_ptr->lapse_[idx][] += dt * dfdt_ptr->lapse[idx][];
         f_ptr->K_[idx][] += dt * dfdt_ptr->K[idx][];
     });
 
-    f_ptr->contraconf_christoffel_trace_.for_each_index([=](const auto idx, const auto tidx) {
-        f_ptr->contraconf_christoffel_trace_[idx][tidx] +=
-            dt * dfdt_ptr->contraconf_christoffel_trace[idx][tidx];
-    });
+    f_ptr->contraconf_christoffel_trace_.for_each_index(
+        [dt, SPTR(f_ptr, dfdt_ptr)](const auto idx, const auto tidx) {
+            f_ptr->contraconf_christoffel_trace_[idx][tidx] +=
+                dt * dfdt_ptr->contraconf_christoffel_trace[idx][tidx];
+        });
 
-    f_ptr->coconf_A_.for_each_index([=](const auto idx, const auto tidx) {
+    f_ptr->coconf_A_.for_each_index([dt, SPTR(f_ptr, dfdt_ptr)](const auto idx, const auto tidx) {
         f_ptr->coconf_A_[idx][tidx] += dt * dfdt_ptr->coconf_A[idx][tidx];
         f_ptr->coconf_metric_[idx][tidx] += dt * dfdt_ptr->coconf_metric[idx][tidx];
     });
@@ -42,7 +43,7 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
     auto* const f_ptr          = &f;
     const auto [fNx, fNy, fNz] = f.size();
 
-    sum_ptr->for_each_index([=](const auto idx, const auto tidx) {
+    sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
         const auto juz = idx[1];
         const auto kuz = idx[2];
@@ -121,11 +122,13 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
         const auto K_derivative_sum_ptr =
             finite_difference::periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
                 U->K_);
-        W.for_each_index([=, this](const auto idx) {
-            lapse[idx][] += coeff * (*lapse_derivative_sum_ptr)[idx][];
-            W[idx][] += coeff * (*W_derivative_sum_ptr)[idx][];
-            K[idx][] += coeff * (*K_derivative_sum_ptr)[idx][];
-        });
+        W.for_each_index(
+            [SPTR(lapse_derivative_sum_ptr, W_derivative_sum_ptr, K_derivative_sum_ptr),
+             this](const auto idx) {
+                lapse[idx][] += coeff * (*lapse_derivative_sum_ptr)[idx][];
+                W[idx][] += coeff * (*W_derivative_sum_ptr)[idx][];
+                K[idx][] += coeff * (*K_derivative_sum_ptr)[idx][];
+            });
         tensor_buffer_queue.wait();
     }
 
@@ -134,10 +137,12 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
             finite_difference::periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
                 U->contraconf_christoffel_trace_);
 
-        contraconf_christoffel_trace.for_each_index([=, this](const auto idx, const auto tidx) {
-            contraconf_christoffel_trace[idx][tidx] +=
-                coeff * (*contraconf_christoffel_trace_derivative_sum_ptr)[idx][tidx];
-        });
+        contraconf_christoffel_trace.for_each_index(
+            [SPTR(contraconf_christoffel_trace_derivative_sum_ptr), this](const auto idx,
+                                                                          const auto tidx) {
+                contraconf_christoffel_trace[idx][tidx] +=
+                    coeff * (*contraconf_christoffel_trace_derivative_sum_ptr)[idx][tidx];
+            });
         tensor_buffer_queue.wait();
     }
 
@@ -146,15 +151,16 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
             finite_difference::periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
                 U->coconf_metric_);
 
-        coconf_metric.for_each_index([=, this](const auto idx, const auto tidx) {
-            coconf_metric[idx][tidx] += coeff * (*coconf_metric_derivative_sum_ptr)[idx][tidx];
-        });
+        coconf_metric.for_each_index(
+            [SPTR(coconf_metric_derivative_sum_ptr), this](const auto idx, const auto tidx) {
+                coconf_metric[idx][tidx] += coeff * (*coconf_metric_derivative_sum_ptr)[idx][tidx];
+            });
         tensor_buffer_queue.wait();
     }
 }
 
 void
 w2_bssn_uniform_grid::clamp_W(const real W) {
-    W_.for_each_index([=, this](const auto idx) { W_[idx][] = sycl::max(W, W_[idx][]); });
+    W_.for_each_index([W, this](const auto idx) { W_[idx][] = sycl::max(W, W_[idx][]); });
     tensor_buffer_queue.wait();
 }
