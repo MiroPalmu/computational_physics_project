@@ -436,7 +436,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
         { // term 2
             auto term2_ptr = allocate_buffer<2>(grid_size_);
             term2_ptr->for_each_index(
-                [two, SPTR(term2_ptr, contraconf_metric_ptr), this](const auto idx) {
+                [SPTR(term2_ptr, contraconf_metric_ptr), this](const auto idx) {
                     u8",,im,mn,nj"_einsum((*term2_ptr)[idx],
                                           two,
                                           lapse_[idx],
@@ -462,8 +462,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
 
                     auto temp_ptr = allocate_buffer<2>(grid_size_);
                     temp_ptr->for_each_index(
-                        [minus_half,
-                         SPTR(temp_ptr, contraconf_metric_ptr, coconf_metric_2nd_derivative_ptr)](
+                        [SPTR(temp_ptr, contraconf_metric_ptr, coconf_metric_2nd_derivative_ptr)](
                             const auto idx) {
                             u8",nm,ijnm"_einsum((*temp_ptr)[idx],
                                                 minus_half,
@@ -512,29 +511,25 @@ w2_bssn_uniform_grid::pre_calculations() const {
                     auto term4_ptr = allocate_buffer<2>(grid_size_);
                     auto term5_ptr = allocate_buffer<2>(grid_size_);
 
-                    term4_ptr->for_each_index([SPTR(term4_ptr,
-                                                    contraconf_metric_ptr,
-                                                    contraconf_metric_ptr,
-                                                    coconf_christoffels_ptr,
-                                                    coconf_christoffels_ptr)](const auto idx) {
-                        u8"ab,cm,cab,ijm -> ij"_einsum((*term4_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx]);
-                    });
+                    term4_ptr->for_each_index(
+                        [SPTR(term4_ptr, contraconf_metric_ptr, coconf_christoffels_ptr)](
+                            const auto idx) {
+                            u8"ab,cm,cab,ijm -> ij"_einsum((*term4_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx]);
+                        });
 
-                    term5_ptr->for_each_index([SPTR(term5_ptr,
-                                                    contraconf_metric_ptr,
-                                                    contraconf_metric_ptr,
-                                                    coconf_christoffels_ptr,
-                                                    coconf_christoffels_ptr)](const auto idx) {
-                        u8"ab,cm,cab,ijm -> ji"_einsum((*term5_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx]);
-                    });
+                    term5_ptr->for_each_index(
+                        [SPTR(term5_ptr, contraconf_metric_ptr, coconf_christoffels_ptr)](
+                            const auto idx) {
+                            u8"ab,cm,cab,ijm -> ji"_einsum((*term5_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx]);
+                        });
 
                     term1_ptr->for_each_index(
                         [SPTR(term1_ptr, term4_ptr, term5_ptr)](const auto idx, const auto tidx) {
@@ -549,51 +544,46 @@ w2_bssn_uniform_grid::pre_calculations() const {
                     auto term6_ptr = allocate_buffer<2>(grid_size_);
                     auto term7_ptr = allocate_buffer<2>(grid_size_);
 
-                    term6_ptr->for_each_index([SPTR(term6_ptr,
-                                                    contraconf_metric_ptr,
-                                                    contraconf_metric_ptr,
-                                                    coconf_christoffels_ptr,
-                                                    coconf_christoffels_ptr)](const auto idx) {
-                        u8"ab,nm,ani,jbm -> ij"_einsum((*term6_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx]);
-                    });
+                    term6_ptr->for_each_index(
+                        [SPTR(term6_ptr, contraconf_metric_ptr, coconf_christoffels_ptr)](
+                            const auto idx) {
+                            u8"ab,nm,ani,jbm -> ij"_einsum((*term6_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx]);
+                        });
 
-                    term7_ptr->for_each_index([SPTR(term7_ptr,
-                                                    contraconf_metric_ptr,
-                                                    contraconf_metric_ptr,
-                                                    coconf_christoffels_ptr,
-                                                    coconf_christoffels_ptr)](const auto idx) {
-                        u8"ab,nm,ani,jbm -> ji"_einsum((*term7_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx]);
-                    });
+                    term7_ptr->for_each_index(
+                        [SPTR(term7_ptr, contraconf_metric_ptr, coconf_christoffels_ptr)](
+                            const auto idx) {
+                            u8"ab,nm,ani,jbm -> ji"_einsum((*term7_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx]);
+                        });
 
-                    term1_ptr->for_each_index([SPTR(term1_ptr, term6_ptr, term7_ptr](const auto idx, const auto tidx) {
-                        (*term1_ptr)[idx][tidx] +=
-                            (*term6_ptr)[idx][tidx] + (*term7_ptr)[idx][tidx];
-                    });
+                    term1_ptr->for_each_index(
+                        [SPTR(term1_ptr, term6_ptr, term7_ptr)](const auto idx, const auto tidx) {
+                            (*term1_ptr)[idx][tidx] +=
+                                (*term6_ptr)[idx][tidx] + (*term7_ptr)[idx][tidx];
+                        });
                     tensor_buffer_queue.wait();
                 }
 
                 { // term 8
                     auto term8_ptr = allocate_buffer<2>(grid_size_);
 
-                    term8_ptr->for_each_index([SPTR(term8_ptr,
-                                                    contraconf_metric_ptr,
-                                                    contraconf_metric_ptr,
-                                                    coconf_christoffels_ptr,
-                                                    coconf_christoffels_ptr)](const auto idx) {
-                        u8"ab,nm,ain,bjm -> ij"_einsum((*term8_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*contraconf_metric_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx],
-                                                       (*coconf_christoffels_ptr)[idx]);
-                    });
+                    term8_ptr->for_each_index(
+                        [SPTR(term8_ptr, contraconf_metric_ptr, coconf_christoffels_ptr)](
+                            const auto idx) {
+                            u8"ab,nm,ain,bjm -> ij"_einsum((*term8_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*contraconf_metric_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx],
+                                                           (*coconf_christoffels_ptr)[idx]);
+                        });
 
                     term1_ptr->for_each_index(
                         [SPTR(term1_ptr, term8_ptr)](const auto idx, const auto tidx) {
@@ -659,8 +649,8 @@ w2_bssn_uniform_grid::pre_calculations() const {
                 { // term 3
                     auto term3_ptr = allocate_buffer<2>(grid_size_);
                     term3_ptr->for_each_index(
-                        [two, SPTR(term3_ptr, contraconf_metric_ptr, W_derivative_ptr), this](
-                            const auto idx) {
+                        [SPTR(term3_ptr, contraconf_metric_ptr, W_derivative_ptr),
+                         this](const auto idx) {
                             u8",ij,mn,m,n"_einsum((*term3_ptr)[idx],
                                                   two,
                                                   coconf_metric_[idx],
@@ -750,7 +740,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
         { // term 2
             auto term2_ptr = allocate_buffer<1>(grid_size_);
             term2_ptr->for_each_index(
-                [SPTR(term2_ptr, contraconf_metric_ptr, contraconf_A_ptr, contraconf_A_ptr),
+                [SPTR(term2_ptr, contraconf_metric_ptr, coconf_christoffels_ptr, contraconf_A_ptr),
                  this](const auto idx) {
                     u8",,ia,abc,bc"_einsum((*term2_ptr)[idx],
                                            two,
@@ -791,8 +781,7 @@ w2_bssn_uniform_grid::pre_calculations() const {
     { // momentum constraint
         const auto contracoconf_A_ptr = std::invoke([&] {
             auto temp_ptr = allocate_buffer<2>(grid_size_);
-            temp_ptr->for_each_index([SPTR(temp_ptr, contracoconf_metric_ptr),
-                                      this](const auto idx) {
+            temp_ptr->for_each_index([SPTR(temp_ptr, contraconf_metric_ptr), this](const auto idx) {
                 u8"ij,jk"_einsum((*temp_ptr)[idx], (*contraconf_metric_ptr)[idx], coconf_A_[idx]);
             });
 
