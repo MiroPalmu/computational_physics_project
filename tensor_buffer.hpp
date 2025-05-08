@@ -130,3 +130,35 @@ class tensor_buffer {
         glz::ex::write_file_beve(self.buffs_, name.native(), std::vector<std::byte>{});
     }
 };
+
+
+/// Syntax sugar for following:
+///
+/// [foo_ptr = foo_ptr.get(), bar_ptr = bar_ptr.get()]
+///
+/// to
+///
+/// [SPTR(foo_ptr, bar_ptr)]
+
+#define GET_ARG(arg) arg = arg.get()
+
+#define FOR_EACH_1(action, x) action(x)
+#define FOR_EACH_2(action, x, ...) action(x), FOR_EACH_1(action, __VA_ARGS__)
+#define FOR_EACH_3(action, x, ...) action(x), FOR_EACH_2(action, __VA_ARGS__)
+#define FOR_EACH_4(action, x, ...) action(x), FOR_EACH_3(action, __VA_ARGS__)
+#define FOR_EACH_5(action, x, ...) action(x), FOR_EACH_4(action, __VA_ARGS__)
+#define FOR_EACH_6(action, x, ...) action(x), FOR_EACH_5(action, __VA_ARGS__)
+#define FOR_EACH_7(action, x, ...) action(x), FOR_EACH_6(action, __VA_ARGS__)
+#define FOR_EACH_8(action, x, ...) action(x), FOR_EACH_7(action, __VA_ARGS__)
+#define FOR_EACH_9(action, x, ...) action(x), FOR_EACH_8(action, __VA_ARGS__)
+#define FOR_EACH_10(action, x, ...) action(x), FOR_EACH_9(action, __VA_ARGS__)
+
+// Macro to count number of args (up to 10)
+#define GET_MACRO(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,NAME,...) NAME
+#define FOR_EACH(action, ...) \
+  GET_MACRO(__VA_ARGS__, \
+            FOR_EACH_10, FOR_EACH_9, FOR_EACH_8, FOR_EACH_7, \
+            FOR_EACH_6, FOR_EACH_5, FOR_EACH_4, FOR_EACH_3, \
+            FOR_EACH_2, FOR_EACH_1)(action, __VA_ARGS__)
+
+#define SPTR(...) FOR_EACH(GET_ARG, __VA_ARGS__)
