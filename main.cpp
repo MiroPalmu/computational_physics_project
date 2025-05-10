@@ -41,7 +41,7 @@ main(int argc, char** argv) {
         return std::tuple{ n, steps, 0.001 * n };
     }();
 
-    const auto dump_interval = rn::max(1uz, static_cast<std::size_t>(N / 100.0));
+    const auto dump_interval = rn::max(1uz, static_cast<std::size_t>(time_steps / 100.0));
 
     const auto output_dir = std::filesystem::path{ "./output" };
     std::filesystem::create_directory(output_dir);
@@ -105,7 +105,7 @@ main(int argc, char** argv) {
         if (make_dump) {
             const auto T                = dt * step_ordinal;
             const auto current_dump_dir = dump_dir / std::format("{}", T);
-            step_log_file << "writing dump: " << current_dump_dir << std::flush;
+            step_log_file << "writing dump: " << current_dump_dir << std::endl;
 
             std::filesystem::create_directory(current_dump_dir);
             base->beve_dump(*constraints_storage_for_dump, current_dump_dir);
