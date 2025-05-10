@@ -6,6 +6,9 @@
 #include <fstream>
 #include <print>
 #include <ranges>
+#include <sstream>
+#include <string_view>
+#include <tuple>
 
 #include <sycl/sycl.hpp>
 
@@ -13,10 +16,6 @@
 #include "tensor_buffer.hpp"
 #include "w2_bssn_uniform_grid.hpp"
 
-static constexpr auto N          = 20uz;
-static constexpr auto time_steps = 10uz;
-// Deduced from NR101 which has simulation width of 1 and time step 0.001.
-static constexpr auto dt       = real{ 0.001 * N };
 static constexpr auto substeps = 2uz;
 static constexpr auto W_clamp  = real{ 0.0001 };
 
@@ -24,7 +23,23 @@ sycl::queue tensor_buffer_queue =
     sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
-main() {
+main(int argc, char** argv) {
+    const auto [N, time_steps, dt] = [&] {
+        if (argc != 3) {
+            std::println("Wrong amount of arguments:!");
+            std::println("usage: main N time_steps");
+            std::exit(1);
+        }
+
+        std::stringstream ss;
+        ss << argv[1] << argv[2];
+
+        std::size_t n, steps;
+        ss >> n >> steps;
+        // Deduced from NR101 which has simulation width of 1 and time step 0.001.
+        return std::tuple{ n, steps, 0.001 * n };
+    }();
+
     const auto output_dir = std::filesystem::path{ "./output" };
     std::filesystem::create_directory(output_dir);
     auto log_file = std::ofstream{ output_dir / "log" };
