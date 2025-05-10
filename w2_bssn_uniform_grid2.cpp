@@ -170,7 +170,7 @@ w2_bssn_uniform_grid::clamp_W(const real W) {
 void
 w2_bssn_uniform_grid::beve_dump(const constraints_type& constraints,
                                 const std::filesystem::path& dump_dir_name) {
-    auto t = std::jthread{ [constraints, dump_dir_name, W_, coconf_metric_] {
+    auto t = std::jthread{ [constraints, dump_dir_name, W = W_, g = coconf_metric_] {
         const auto dir_path = std::filesystem::weakly_canonical(dump_dir_name);
         std::filesystem::create_directory(dir_path);
         auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
@@ -178,7 +178,7 @@ w2_bssn_uniform_grid::beve_dump(const constraints_type& constraints,
         constraints.momentum.write_as_beve(file_path("momentum.beve"));
         constraints.hamiltonian.write_as_beve(file_path("hamiltonian.beve"));
         W_.write_as_beve(file_path("W.beve"));
-        coconf_metric_.write_as_beve(file_path("coconf_metric.beve"));
+        g.write_as_beve(file_path("coconf_metric.beve"));
     } };
 
     t.detach();
