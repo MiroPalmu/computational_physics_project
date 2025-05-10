@@ -32,7 +32,7 @@ main(int argc, char** argv) {
         }
 
         std::stringstream ss;
-        ss << argv[1] << argv[2];
+        ss << argv[1] << " " << argv[2];
 
         std::size_t n, steps;
         ss >> n >> steps;
