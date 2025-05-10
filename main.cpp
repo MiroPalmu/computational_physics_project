@@ -79,7 +79,7 @@ main(int argc, char** argv) {
         }();
 
         const auto make_dump = (step_ordinal % dump_interval) == 0;
-        std::shared_ptr<constraints_type> constraints_storage_for_dump;
+        std::shared_ptr<w2_bssn_uniform_grid::constraints_type> constraints_storage_for_dump;
 
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {

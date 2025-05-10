@@ -177,7 +177,7 @@ w2_bssn_uniform_grid::beve_dump(const constraints_type& constraints,
 
         constraints.momentum.write_as_beve(file_path("momentum.beve"));
         constraints.hamiltonian.write_as_beve(file_path("hamiltonian.beve"));
-        W_.write_as_beve(file_path("W.beve"));
+        W.write_as_beve(file_path("W.beve"));
         g.write_as_beve(file_path("coconf_metric.beve"));
     } };
 
