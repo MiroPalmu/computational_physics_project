@@ -1,5 +1,6 @@
 #include "ranges.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <format>
@@ -50,6 +51,12 @@ main(int argc, char** argv) {
 
     auto step_log_file = std::ofstream{ output_dir / "steps" };
 
+
+    const auto dump_dir = output_dir / "dumps";
+    std::filesystem::create_directory(dump_dir);
+    const auto dump_interval = rn::max(1uz, static_cast<std::size_t>(N / 100.0));
+
+
     auto t = real{ 0 };
 
     auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
@@ -90,5 +97,12 @@ main(int argc, char** argv) {
         step_log_file << std::format("Step done in time: {}\n",
                                      std::chrono::duration<double>(stop - start))
                       << std::flush;
+
+        if ((step_ordinal % dump_interval) == 0) {
+            const auto T = dt * step_ordinal;
+            const auto current_dump_dir = dump_dir / std::format("{}", T);
+            std::filesystem::create_directory(current_dump_dir);
+            base.beve_dump(current_dump_dir);
+        }
     }
 }
