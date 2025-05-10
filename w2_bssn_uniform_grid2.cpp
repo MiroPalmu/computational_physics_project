@@ -1,5 +1,7 @@
 #include "w2_bssn_uniform_grid.hpp"
 
+#include <thread>
+
 #include <sycl/sycl.hpp>
 
 std::shared_ptr<w2_bssn_uniform_grid>
@@ -163,4 +165,21 @@ void
 w2_bssn_uniform_grid::clamp_W(const real W) {
     W_.for_each_index([W, this](const auto idx) { W_[idx][] = sycl::max(W, W_[idx][]); });
     tensor_buffer_queue.wait();
+}
+
+void
+w2_bssn_uniform_grid::beve_dump(const constraints_type& constraints,
+                                const std::filesystem::path& dump_dir_name) {
+    auto t = std::jthread{ [constraints, dump_dir_name, W = W_, g = coconf_metric_] {
+        const auto dir_path = std::filesystem::weakly_canonical(dump_dir_name);
+        std::filesystem::create_directory(dir_path);
+        auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
+
+        constraints.momentum.write_as_beve(file_path("momentum.beve"));
+        constraints.hamiltonian.write_as_beve(file_path("hamiltonian.beve"));
+        W.write_as_beve(file_path("W.beve"));
+        g.write_as_beve(file_path("coconf_metric.beve"));
+    } };
+
+    t.detach();
 }

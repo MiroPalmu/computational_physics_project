@@ -1,5 +1,6 @@
 #include "ranges.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <format>
@@ -40,15 +41,22 @@ main(int argc, char** argv) {
         return std::tuple{ n, steps, 0.001 * n };
     }();
 
+    const auto dump_interval = rn::max(1uz, static_cast<std::size_t>(time_steps / 100.0));
+
     const auto output_dir = std::filesystem::path{ "./output" };
     std::filesystem::create_directory(output_dir);
     auto log_file = std::ofstream{ output_dir / "log" };
+
     log_file << std::format("grid size: {} x {} x {}\n", N, N, N)
              << std::format("time steps, dt: {}, {}\n", time_steps, dt)
              << std::format("implicit euler substeps: {}\n", substeps)
-             << std::format("W clamp: {}\n", W_clamp) << std::flush;
+             << std::format("W clamp: {}\n", W_clamp)
+             << std::format("dump interval: {}\n", dump_interval) << std::flush;
 
     auto step_log_file = std::ofstream{ output_dir / "steps" };
+
+    const auto dump_dir = output_dir / "dumps";
+    std::filesystem::create_directory(dump_dir);
 
     auto t = real{ 0 };
 
@@ -70,6 +78,9 @@ main(int argc, char** argv) {
             return base->euler_step(pre1.dfdt, dt);
         }();
 
+        const auto make_dump = (step_ordinal % dump_interval) == 0;
+        std::shared_ptr<w2_bssn_uniform_grid::constraints_type> constraints_storage_for_dump;
+
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {
             iter_step->clamp_W(W_clamp);
@@ -77,7 +88,7 @@ main(int argc, char** argv) {
             auto pre = iter_step->pre_calculations();
 
             if (substep_ordinal == substeps - 1uz) { pre.dfdt->kreiss_oliger_6th_order(base); }
-
+            if (make_dump) { constraints_storage_for_dump = pre.constraints; }
             iter_step = base->euler_step(pre.dfdt, dt);
         }
 
@@ -90,5 +101,14 @@ main(int argc, char** argv) {
         step_log_file << std::format("Step done in time: {}\n",
                                      std::chrono::duration<double>(stop - start))
                       << std::flush;
+
+        if (make_dump) {
+            const auto T                = dt * step_ordinal;
+            const auto current_dump_dir = dump_dir / std::format("{}", T);
+            step_log_file << "writing dump: " << current_dump_dir << std::endl;
+
+            std::filesystem::create_directory(current_dump_dir);
+            base->beve_dump(*constraints_storage_for_dump, current_dump_dir);
+        }
     }
 }

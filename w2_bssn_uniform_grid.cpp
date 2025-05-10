@@ -201,34 +201,6 @@ det_n_inv3D(const w2_bssn_uniform_grid::buffer2& matrix) {
     return { std::move(det_ptr), std::move(inv_ptr) };
 }
 
-void
-w2_bssn_uniform_grid::beve_dump(const std::filesystem::path& dump_dir_name) {
-    const auto dir_path = std::filesystem::weakly_canonical(dump_dir_name);
-    std::println("stub bevedump: {}", dir_path.c_str());
-    /*
-    std::filesystem::create_directory(dir_path);
-    auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
-
-    {
-        [[maybe_unused]] auto [S, _] = det_n_inv3D(coconf_metric_);
-        S.for_each_index([&](const auto idx) { S[idx][] -= 1; });
-        S.write_as_beve(file_path("algebraic_constraint_S.beve"));
-    }
-
-    {
-        auto conformal_A_trace = buffer0(coconf_A_.size());
-
-        [[maybe_unused]] const auto [_, contraconf_spatial_metric] = det_n_inv3D(coconf_metric_);
-        conformal_A_trace.for_each_index([&](const auto idx) {
-            u8"ij,ij"_einsum(conformal_A_trace[idx],
-                             contraconf_spatial_metric[idx],
-                             coconf_A_[idx]);
-        });
-        conformal_A_trace.write_as_beve(file_path("algebraic_constraint_conformal_A.beve"));
-    }
-    */
-}
-
 w2_bssn_uniform_grid::time_derivative_type::time_derivative_type(const grid_size gs)
     : lapse(gs),
       W(gs),
