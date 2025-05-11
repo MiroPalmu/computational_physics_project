@@ -179,7 +179,7 @@ void
 w2_bssn_uniform_grid::append_output(const real time,
                                     const constraints_type& constraints,
                                     const std::filesystem::path& output_dir_path) {
-    auto t = std::jthread{ [constraints, output_dir_path, W = W_, g = coconf_metric_] {
+    auto t = std::jthread{ [time, constraints, output_dir_path, W = W_, g = coconf_metric_] {
         // Assumes grid size of N x 1 x 1!
         const auto N = constraints.hamiltonian.size().Nx;
 
