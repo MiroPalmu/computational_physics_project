@@ -41,26 +41,25 @@ main(int argc, char** argv) {
         return std::tuple{ n, steps, 0.001 * n };
     }();
 
-    const auto dump_interval = rn::max(1uz, static_cast<std::size_t>(time_steps / 100.0));
+    const auto output_interval = rn::max(1uz, static_cast<std::size_t>(time_steps / 100.0));
 
     const auto output_dir = std::filesystem::path{ "./output" };
     std::filesystem::create_directory(output_dir);
     auto log_file = std::ofstream{ output_dir / "log" };
 
-    log_file << std::format("grid size: {} x {} x {}\n", N, N, N)
+    // log_file << std::format("grid size: {} x {} x {}\n", N, N, N)
+    log_file << std::format("grid size: {} x {} x {}\n", N, 1, 1)
              << std::format("time steps, dt: {}, {}\n", time_steps, dt)
              << std::format("implicit euler substeps: {}\n", substeps)
              << std::format("W clamp: {}\n", W_clamp)
-             << std::format("dump interval: {}\n", dump_interval) << std::flush;
+             << std::format("output interval: {}\n", output_interval) << std::flush;
 
     auto step_log_file = std::ofstream{ output_dir / "steps" };
 
-    const auto dump_dir = output_dir / "dumps";
-    std::filesystem::create_directory(dump_dir);
-
     auto t = real{ 0 };
 
-    auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
+    // auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
+    auto base = allocate_shared_w2(grid_size{ N, 1, 1 }, minkowski_spacetime_tag{});
 
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();
@@ -78,8 +77,8 @@ main(int argc, char** argv) {
             return base->euler_step(pre1.dfdt, dt);
         }();
 
-        const auto make_dump = (step_ordinal % dump_interval) == 0;
-        std::shared_ptr<w2_bssn_uniform_grid::constraints_type> constraints_storage_for_dump;
+        const auto make_output = (step_ordinal % output_interval) == 0;
+        std::shared_ptr<w2_bssn_uniform_grid::constraints_type> constraints_storage_for_output;
 
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {
@@ -88,7 +87,7 @@ main(int argc, char** argv) {
             auto pre = iter_step->pre_calculations();
 
             if (substep_ordinal == substeps - 1uz) { pre.dfdt->kreiss_oliger_6th_order(base); }
-            if (make_dump) { constraints_storage_for_dump = pre.constraints; }
+            if (make_output) { constraints_storage_for_output = pre.constraints; }
             iter_step = base->euler_step(pre.dfdt, dt);
         }
 
@@ -102,13 +101,11 @@ main(int argc, char** argv) {
                                      std::chrono::duration<double>(stop - start))
                       << std::flush;
 
-        if (make_dump) {
+        if (make_output) {
             const auto T                = dt * step_ordinal;
-            const auto current_dump_dir = dump_dir / std::format("{}", T);
-            step_log_file << "writing dump: " << current_dump_dir << std::endl;
+            step_log_file << "writing output... ";
 
-            std::filesystem::create_directory(current_dump_dir);
-            base->beve_dump(*constraints_storage_for_dump, current_dump_dir);
+            base->append_output(*constraints_storage_for_output, output_dir);
         }
     }
 }

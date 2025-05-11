@@ -29,8 +29,9 @@ auto
 periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allocator>& f) {
     auto derivatives_ptr = w2_bssn_uniform_grid::allocate_buffer<rank + 1uz>(f.size());
 
-    auto* const f_ptr          = &f;
-    const auto [fNx, fNy, fNz] = f.size();
+    auto* const f_ptr = &f;
+    // const auto [fNx, fNy, fNz] = f.size();
+    const auto [fNx, _, _] = f.size();
 
     f.for_each_index([=, SPTR(derivatives_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -38,23 +39,23 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         const auto kuz = idx[2];
 
         const auto i = static_cast<std::ptrdiff_t>(iuz);
-        const auto j = static_cast<std::ptrdiff_t>(juz);
-        const auto k = static_cast<std::ptrdiff_t>(kuz);
+        // const auto j = static_cast<std::ptrdiff_t>(juz);
+        // const auto k = static_cast<std::ptrdiff_t>(kuz);
 
         const auto im2 = (fNx + i - 2) % fNx;
         const auto im1 = (fNx + i - 1) % fNx;
         const auto ip1 = (fNx + i + 1) % fNx;
         const auto ip2 = (fNx + i + 2) % fNx;
 
-        const auto jm2 = (fNy + j - 2) % fNy;
-        const auto jm1 = (fNy + j - 1) % fNy;
-        const auto jp1 = (fNy + j + 1) % fNy;
-        const auto jp2 = (fNy + j + 2) % fNy;
+        // const auto jm2 = (fNy + j - 2) % fNy;
+        // const auto jm1 = (fNy + j - 1) % fNy;
+        // const auto jp1 = (fNy + j + 1) % fNy;
+        // const auto jp2 = (fNy + j + 2) % fNy;
 
-        const auto km2 = (fNz + k - 2) % fNz;
-        const auto km1 = (fNz + k - 1) % fNz;
-        const auto kp1 = (fNz + k + 1) % fNz;
-        const auto kp2 = (fNz + k + 2) % fNz;
+        // const auto km2 = (fNz + k - 2) % fNz;
+        // const auto km1 = (fNz + k - 1) % fNz;
+        // const auto kp1 = (fNz + k + 1) % fNz;
+        // const auto kp2 = (fNz + k + 2) % fNz;
 
         using derivative_tidx_type = std::array<std::size_t, rank + 1>;
 
@@ -77,13 +78,13 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
             a * (*f_ptr)[{ im2, juz, kuz }][tidx] - b * (*f_ptr)[{ im1, juz, kuz }][tidx]
             + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx];
 
-        (*derivatives_ptr)[idx][ytidx] =
-            a * (*f_ptr)[{ iuz, jm2, kuz }][tidx] - b * (*f_ptr)[{ iuz, jm1, kuz }][tidx]
-            + b * (*f_ptr)[{ iuz, jp1, kuz }][tidx] - a * (*f_ptr)[{ iuz, jp2, kuz }][tidx];
+        (*derivatives_ptr)[idx][ytidx] = real{ 0 };
+        //     a * (*f_ptr)[{ iuz, jm2, kuz }][tidx] - b * (*f_ptr)[{ iuz, jm1, kuz }][tidx]
+        //     + b * (*f_ptr)[{ iuz, jp1, kuz }][tidx] - a * (*f_ptr)[{ iuz, jp2, kuz }][tidx];
 
-        (*derivatives_ptr)[idx][ztidx] =
-            a * (*f_ptr)[{ iuz, juz, km2 }][tidx] - b * (*f_ptr)[{ iuz, juz, km1 }][tidx]
-            + b * (*f_ptr)[{ iuz, juz, kp1 }][tidx] - a * (*f_ptr)[{ iuz, juz, kp2 }][tidx];
+        (*derivatives_ptr)[idx][ztidx] = real{ 0 };
+        //     a * (*f_ptr)[{ iuz, juz, km2 }][tidx] - b * (*f_ptr)[{ iuz, juz, km1 }][tidx]
+        //     + b * (*f_ptr)[{ iuz, juz, kp1 }][tidx] - a * (*f_ptr)[{ iuz, juz, kp2 }][tidx];
     });
 
     // We have to wait, because after return argument f might move before kernel is executed.

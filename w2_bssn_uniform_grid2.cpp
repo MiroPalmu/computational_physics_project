@@ -1,6 +1,13 @@
 #include "w2_bssn_uniform_grid.hpp"
 
+#include "ranges.hpp"
+
+#include <execution>
+#include <fstream>
+#include <numeric>
+#include <ranges>
 #include <thread>
+#include <vector>
 
 #include <sycl/sycl.hpp>
 
@@ -42,8 +49,9 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
     const tensor_buffer<rank, 3uz, T, Allocator>& f) {
     auto sum_ptr = w2_bssn_uniform_grid::allocate_buffer<rank>(f.size());
 
-    auto* const f_ptr          = &f;
-    const auto [fNx, fNy, fNz] = f.size();
+    auto* const f_ptr = &f;
+    // const auto [fNx, fNy, fNz] = f.size();
+    const auto [fNx, _, _] = f.size();
 
     sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -51,8 +59,8 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
         const auto kuz = idx[2];
 
         const auto i = static_cast<std::ptrdiff_t>(iuz);
-        const auto j = static_cast<std::ptrdiff_t>(juz);
-        const auto k = static_cast<std::ptrdiff_t>(kuz);
+        // const auto j = static_cast<std::ptrdiff_t>(juz);
+        // const auto k = static_cast<std::ptrdiff_t>(kuz);
 
         const auto im3 = (fNx + i - 3) % fNx;
         const auto im2 = (fNx + i - 2) % fNx;
@@ -61,19 +69,19 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
         const auto ip2 = (fNx + i + 2) % fNx;
         const auto ip3 = (fNx + i + 3) % fNx;
 
-        const auto jm3 = (fNy + j - 3) % fNy;
-        const auto jm2 = (fNy + j - 2) % fNy;
-        const auto jm1 = (fNy + j - 1) % fNy;
-        const auto jp1 = (fNy + j + 1) % fNy;
-        const auto jp2 = (fNy + j + 2) % fNy;
-        const auto jp3 = (fNy + j + 3) % fNy;
+        // const auto jm3 = (fNy + j - 3) % fNy;
+        // const auto jm2 = (fNy + j - 2) % fNy;
+        // const auto jm1 = (fNy + j - 1) % fNy;
+        // const auto jp1 = (fNy + j + 1) % fNy;
+        // const auto jp2 = (fNy + j + 2) % fNy;
+        // const auto jp3 = (fNy + j + 3) % fNy;
 
-        const auto km3 = (fNz + k - 3) % fNz;
-        const auto km2 = (fNz + k - 2) % fNz;
-        const auto km1 = (fNz + k - 1) % fNz;
-        const auto kp1 = (fNz + k + 1) % fNz;
-        const auto kp2 = (fNz + k + 2) % fNz;
-        const auto kp3 = (fNz + k + 3) % fNz;
+        // const auto km3 = (fNz + k - 3) % fNz;
+        // const auto km2 = (fNz + k - 2) % fNz;
+        // const auto km1 = (fNz + k - 1) % fNz;
+        // const auto kp1 = (fNz + k + 1) % fNz;
+        // const auto kp2 = (fNz + k + 2) % fNz;
+        // const auto kp3 = (fNz + k + 3) % fNz;
 
         static constexpr auto a = T{ 6 };
         static constexpr auto b = T{ 15 };
@@ -87,18 +95,18 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
             + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
         // y
-        (*sum_ptr)[idx][tidx] +=
-            (*f_ptr)[{ iuz, jm3, kuz }][tidx] - a * (*f_ptr)[{ iuz, jm2, kuz }][tidx]
-            + b * (*f_ptr)[{ iuz, jm1, kuz }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
-            + b * (*f_ptr)[{ iuz, jp1, kuz }][tidx] - a * (*f_ptr)[{ iuz, jp2, kuz }][tidx]
-            + (*f_ptr)[{ iuz, jp3, kuz }][tidx];
+        // (*sum_ptr)[idx][tidx] +=
+        //     (*f_ptr)[{ iuz, jm3, kuz }][tidx] - a * (*f_ptr)[{ iuz, jm2, kuz }][tidx]
+        //     + b * (*f_ptr)[{ iuz, jm1, kuz }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
+        //     + b * (*f_ptr)[{ iuz, jp1, kuz }][tidx] - a * (*f_ptr)[{ iuz, jp2, kuz }][tidx]
+        //     + (*f_ptr)[{ iuz, jp3, kuz }][tidx];
 
         // z
-        (*sum_ptr)[idx][tidx] +=
-            (*f_ptr)[{ iuz, juz, km3 }][tidx] - a * (*f_ptr)[{ iuz, juz, km2 }][tidx]
-            + b * (*f_ptr)[{ iuz, juz, km1 }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
-            + b * (*f_ptr)[{ iuz, juz, kp1 }][tidx] - a * (*f_ptr)[{ iuz, juz, kp2 }][tidx]
-            + (*f_ptr)[{ iuz, juz, kp3 }][tidx];
+        // (*sum_ptr)[idx][tidx] +=
+        //     (*f_ptr)[{ iuz, juz, km3 }][tidx] - a * (*f_ptr)[{ iuz, juz, km2 }][tidx]
+        //     + b * (*f_ptr)[{ iuz, juz, km1 }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
+        //     + b * (*f_ptr)[{ iuz, juz, kp1 }][tidx] - a * (*f_ptr)[{ iuz, juz, kp2 }][tidx]
+        //     + (*f_ptr)[{ iuz, juz, kp3 }][tidx];
     });
 
     // We have to wait, because after return argument f might move before kernel is executed.
@@ -168,17 +176,51 @@ w2_bssn_uniform_grid::clamp_W(const real W) {
 }
 
 void
-w2_bssn_uniform_grid::beve_dump(const constraints_type& constraints,
-                                const std::filesystem::path& dump_dir_name) {
-    auto t = std::jthread{ [constraints, dump_dir_name, W = W_, g = coconf_metric_] {
-        const auto dir_path = std::filesystem::weakly_canonical(dump_dir_name);
-        std::filesystem::create_directory(dir_path);
-        auto file_path = [&](const std::filesystem::path& filename) { return dir_path / filename; };
+w2_bssn_uniform_grid::append_output(const constraints_type& constraints,
+                                    const std::filesystem::path& output_dir_path) {
+    auto t = std::jthread{ [constraints, output_dir_path, W = W_, g = coconf_metric_] {
+        // Assumes grid size of N x 1 x 1!
+        const auto N = constraints.hamiltonian.size().Nx;
 
-        constraints.momentum.write_as_beve(file_path("momentum.beve"));
-        constraints.hamiltonian.write_as_beve(file_path("hamiltonian.beve"));
-        W.write_as_beve(file_path("W.beve"));
-        g.write_as_beve(file_path("coconf_metric.beve"));
+        // Hamiltonian sum:
+
+        {
+            auto hsum_file = std::fstream(output_dir_path / "hamiltonian_sum.txt",
+                                          std::ios::out | std::ios::app);
+            auto Hsum      = real{ 0 };
+            for (const auto i : rv::iota(0uz, N)) {
+                Hsum += constraints.hamiltonian[i, 0uz, 0uz][];
+            }
+            hsum_file << Hsum << std::endl;
+        }
+
+        // Momentum sum:
+
+        {
+            auto msum_file =
+                std::fstream(output_dir_path / "momentum_sum.txt", std::ios::out | std::ios::app);
+
+            auto Msum = real{ 0 };
+            for (const auto n : rv::iota(0uz, N)) {
+                for (const auto i : rv::iota(0uz, 3uz)) {
+                    Msum += constraints.momentum[n, 0uz, 0uz][i];
+                }
+            }
+            msum_file << Msum << std::endl;
+        }
+
+        // g_00 grid:
+
+        {
+            auto g00_file =
+                std::fstream(output_dir_path / "g00.txt", std::ios::out | std::ios::app);
+
+            for (const auto n : rv::iota(0uz, N)) {
+                const auto g00 = g[n, 0uz, 0uz][0, 0] * W[n, 0uz, 0uz][] * W[n, 0uz, 0uz][];
+                g00_file << g00 << " ";
+            }
+            g00_file << std::endl;
+        }
     } };
 
     t.detach();

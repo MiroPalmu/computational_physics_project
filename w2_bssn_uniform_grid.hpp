@@ -95,8 +95,7 @@ class w2_bssn_uniform_grid {
     [[nodiscard]]
     explicit w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag);
 
-    void beve_dump(const constraints_type&,
-                   const std::filesystem::path& dump_dir_name = "./w2_bssn_uniform_grid_dump");
+    void append_output(const constraints_type&, const std::filesystem::path&);
 
     [[nodiscard]]
     pre_calculations_type pre_calculations() const;
