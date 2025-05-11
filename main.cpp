@@ -102,10 +102,10 @@ main(int argc, char** argv) {
                       << std::flush;
 
         if (make_output) {
-            const auto T                = dt * step_ordinal;
+            const auto T = dt * step_ordinal;
             step_log_file << "writing output... ";
 
-            base->append_output(*constraints_storage_for_output, output_dir);
+            base->append_output(T, *constraints_storage_for_output, output_dir);
         }
     }
 }
