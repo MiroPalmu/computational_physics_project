@@ -51,7 +51,7 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
 
     auto* const f_ptr = &f;
     // const auto [fNx, fNy, fNz] = f.size();
-    const auto [fNx, std::ignore, std::ignore] = f.size();
+    const auto [fNx, _, _] = f.size();
 
     sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -180,7 +180,7 @@ w2_bssn_uniform_grid::append_output(const constraints_type& constraints,
                                     const std::filesystem::path& output_dir_path) {
     auto t = std::jthread{ [constraints, output_dir_name, W = W_, g = coconf_metric_] {
         // Assumes grid size of N x 1 x 1!
-        const auto N = constraints.hamiltonian.size()[0];
+        const auto N = constraints.hamiltonian.size().Nx;
 
         // Hamiltonian sum:
 

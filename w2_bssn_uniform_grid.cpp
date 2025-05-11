@@ -29,9 +29,9 @@ auto
 periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allocator>& f) {
     auto derivatives_ptr = w2_bssn_uniform_grid::allocate_buffer<rank + 1uz>(f.size());
 
-    auto* const f_ptr          = &f;
+    auto* const f_ptr = &f;
     // const auto [fNx, fNy, fNz] = f.size();
-    const auto [fNx, std::ignore, std::ignore] = f.size();
+    const auto [fNx, _, _] = f.size();
 
     f.for_each_index([=, SPTR(derivatives_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -60,16 +60,16 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         using derivative_tidx_type = std::array<std::size_t, rank + 1>;
 
         auto xtidx = derivative_tidx_type{};
-        // auto ytidx = derivative_tidx_type{};
-        // auto ztidx = derivative_tidx_type{};
+        auto ytidx = derivative_tidx_type{};
+        auto ztidx = derivative_tidx_type{};
         for (auto n = 0uz; n < tidx.size(); ++n) {
             xtidx[n] = tidx[n];
-            // ytidx[n] = tidx[n];
-            // ztidx[n] = tidx[n];
+            ytidx[n] = tidx[n];
+            ztidx[n] = tidx[n];
         }
         xtidx.back() = 0uz;
-        // ytidx.back() = 1uz;
-        // ztidx.back() = 2uz;
+        ytidx.back() = 1uz;
+        ztidx.back() = 2uz;
 
         static constexpr auto a = T{ 1 } / T{ 12 };
         static constexpr auto b = T{ 2 } / T{ 3 };
