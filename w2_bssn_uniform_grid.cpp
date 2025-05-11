@@ -875,7 +875,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     assert(gs.Ny == 1);
     assert(gs.Ny == gs.Nz);
 
-    const auto A = real{ 0.1 } * static_cast<real>(grid_size_.Nx);
+    const auto A = real{ 0.1 };
     const auto d = static_cast<real>(grid_size_.Nx);
 
     // co_metric:
@@ -890,7 +890,8 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
             static constexpr auto A = real{ 0.1 };
 
             // Assume x coordinates are 0, ..., Nx - 1.
-            const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * idx[0] / d);
+            const auto x = static_cast<real>(idx[0]);
+            const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
 
             (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
         }
