@@ -1,0 +1,5 @@
+grid size: 128 x 1 x 1
+time steps, dt: 1000, 0.128
+implicit euler substeps: 2
+W clamp: 1e-04
+output interval: 10
