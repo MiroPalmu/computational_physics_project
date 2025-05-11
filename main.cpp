@@ -59,7 +59,7 @@ main(int argc, char** argv) {
     auto t = real{ 0 };
 
     // auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
-    auto base = allocate_shared_w2(grid_size{ N, 1, 1 }, minkowski_spacetime_tag{});
+    auto base = allocate_shared_w2(grid_size{ N, 1, 1 }, gauge_wave_spacetime_tag{});
 
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();

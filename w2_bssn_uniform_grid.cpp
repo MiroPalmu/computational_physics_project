@@ -3,9 +3,11 @@
 #include <experimental/mdspan>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <concepts>
 #include <functional>
+#include <numbers>
 #include <print>
 #include <stdexcept>
 #include <tuple>
@@ -859,4 +861,126 @@ w2_bssn_uniform_grid::pre_calculations() const {
     }
 
     return pre_calculations_type{ std::move(dfdt_ptr), std::move(constraints_ptr) };
+}
+
+[[nodiscard]]
+w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacetime_tag)
+    : grid_size_(gs),
+      W_(gs),
+      lapse_(gs),
+      coconf_metric_(gs),
+      K_(gs),
+      coconf_A_(gs),
+      contraconf_christoffel_trace_(gs) {
+    assert(gs.Ny == 1);
+    assert(gs.Ny == gs.Nz);
+
+    static constexpr auto A = real{ 0.1 } * static_cast<real>(gird_size_.Nx);
+    const auto d            = static_cast<real>(grid_size.Nx_);
+
+    // co_metric:
+    auto co_metric_ptr = allocate_buffer<2>(grid_size_);
+
+    co_metric_ptr->for_each_index([SPTR(co_metric_ptr), d](const auto idx, const auto tidx) {
+        const auto diagonal         = tidx[0] == tidx[1];
+        (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
+
+        const auto g0 = tidx[0] == 0;
+        if (diagonal and g0) {
+            static constexpr auto A = real{ 0.1 };
+
+            // Assume x coordinates are 0, ..., Nx - 1.
+            const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * idx[0] / d);
+
+            (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
+        }
+    });
+
+    // W:
+    //   - det(co_metric)
+
+    const auto [det_metric_ptr, contra_metric_ptr] = det_n_inv3D(*co_metric_ptr);
+
+    W_.for_each_index([SPTR(det_metric_ptr)](const auto idx) {
+        W_[idx][] = sycl::pow((*det_metric_ptr)[idx][], real{ -1 / 6 });
+    });
+
+    // coconf_metric:
+    //   - W
+    //   - co_metric
+
+    coconf_metric_.for_each_index([this](const auto idx, const auto tidx) {
+        coconf_metric_[idx][tidx] = W_[idx][] * W_[idx][] * co_metric[idx][tidx];
+    });
+
+    // K:
+    //   - contra_metric
+    //   - co_K
+    //      - lapse
+
+    lapse_.for_each_index([this, d](const auto idx) {
+        // Assume x coordinates are 0, ..., Nx - 1.
+        const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * idx[0] / d);
+        lapse_[idx][] = sycl::sqrt(real{ 1 } - H);
+    });
+
+    auto co_K_ptr = allocate_buffer<2>(grid_size_);
+
+    co_K_ptr->for_each_index([this, SPTR(co_K_ptr)](const auto idx, const auto tidx) {
+        const auto diagonal    = tidx[0] == tidx[1];
+        (*co_K_ptr)[idx][tidx] = static_cast<real>(diagonal);
+
+        const auto d = static_cast<real>(gird_size_.Nx);
+
+        static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
+        const auto phi               = two_pi * static_cast<real>(idx[0]) / d;
+
+        (*co_K_ptr)[idx][tidx] *= -A * std::numbers::pi_v<real> * sycl::cos(phi);
+        (*co_K_ptr)[idx][tidx] /= lapse_[idx][] * d;
+    });
+
+    K_.for_each_index([this, SPTR(contra_metric_ptr, co_K_ptr)](const auto idx) {
+        u8"nm,nm"_einsum(K_[idx], (*contra_metric_ptr)[idx], (*co_K_ptr)[idx]);
+    });
+
+    // coconf_A:
+    //   - W
+    //   - co_K
+    //   - co_metric
+    //   - K
+
+    auto K_trace_remover_ptr = allocate_buffer<2>(grid_size_);
+
+    K_trace_remover_ptr->for_each_index(
+        [SPTR(K_trace_remover_ptr), this](const auto idx, const auto tidx) {
+            static constexpr auto third = real{ 1 } / real{ 3 };
+
+            (*K_trace_remover_ptr)[idx][tidx] = third * co_metric[idx][tidx] * K_[idx][];
+        });
+
+    coconf_A_.for_each_index([this, SPTR(co_K_ptr, K_trace_remover_ptr)](const auto idx,
+                                                                         const auto tidx) {
+        const auto W2        = W_[idx][] * W_[idx][];
+        coconf_A_[idx][tidx] = W2 * ((*co_K_ptr)[idx][tidx] - (*K_trace_remover_ptr)[idx][tidx]);
+    });
+
+    // contraconf_chriss:
+    //   - contraconf_metric
+    //   - contra_christoffels
+
+    const auto [coconf_christoffels_ptr, _] =
+        finite_difference::co_christoffel_symbols(coconf_metric_);
+    const auto [_, contraconf_metric_ptr] = det_n_inv3D(coconf_metric_);
+
+    contraconf_christoffel_trace_.for_each_index(
+        [this, SPTR(coconf_christoffels_ptr, contraconf_metric_ptr)](const auto idx) {
+            u8"mn,ij,jmn"_einsum(contraconf_christoffel_trace_[idx],
+                                 (*coconf_christoffels_ptr)[idx],
+                                 (*coconf_christoffels_ptr)[idx],
+                                 (*contraconf_metric_ptr)[idx]);
+        });
+
+    // We have to wait, because after return this might move before kernel is executed.
+    // This is bad architecture, but too late to refactor whole thing.
+    tensor_buffer_queue.wait();
 }
