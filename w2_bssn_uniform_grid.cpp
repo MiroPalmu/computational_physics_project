@@ -876,7 +876,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     assert(gs.Ny == gs.Nz);
 
     const auto A = real{ 0.1 } * static_cast<real>(grid_size_.Nx);
-    const auto d = static_cast<real>(grid_size.Nx_);
+    const auto d = static_cast<real>(grid_size_.Nx_);
 
     // co_metric:
     auto co_metric_ptr = allocate_buffer<2>(grid_size_);
@@ -901,7 +901,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
 
     const auto [det_metric_ptr, contra_metric_ptr] = det_n_inv3D(*co_metric_ptr);
 
-    W_.for_each_index([SPTR(det_metric_ptr)](const auto idx) {
+    W_.for_each_index([this, SPTR(det_metric_ptr)](const auto idx) {
         W_[idx][] = sycl::pow((*det_metric_ptr)[idx][], real{ -1 / 6 });
     });
 
@@ -909,8 +909,8 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     //   - W
     //   - co_metric
 
-    coconf_metric_.for_each_index([this](const auto idx, const auto tidx) {
-        coconf_metric_[idx][tidx] = W_[idx][] * W_[idx][] * co_metric[idx][tidx];
+    coconf_metric_.for_each_index([this, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
+        coconf_metric_[idx][tidx] = W_[idx][] * W_[idx][] * (*co_metric_ptr)[idx][tidx];
     });
 
     // K:
@@ -950,10 +950,10 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     auto K_trace_remover_ptr = allocate_buffer<2>(grid_size_);
 
     K_trace_remover_ptr->for_each_index(
-        [SPTR(K_trace_remover_ptr), this](const auto idx, const auto tidx) {
+        [SPTR(K_trace_remover_ptr, co_metric_ptr), this](const auto idx, const auto tidx) {
             static constexpr auto third = real{ 1 } / real{ 3 };
 
-            (*K_trace_remover_ptr)[idx][tidx] = third * co_metric[idx][tidx] * K_[idx][];
+            (*K_trace_remover_ptr)[idx][tidx] = third * (*co_metric_ptr)[idx][tidx] * K_[idx][];
         });
 
     coconf_A_.for_each_index([this, SPTR(co_K_ptr, K_trace_remover_ptr)](const auto idx,
