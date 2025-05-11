@@ -176,12 +176,20 @@ w2_bssn_uniform_grid::clamp_W(const real W) {
 }
 
 void
-w2_bssn_uniform_grid::append_output(const constraints_type& constraints,
+w2_bssn_uniform_grid::append_output(const real time,
+                                    const constraints_type& constraints,
                                     const std::filesystem::path& output_dir_path) {
-    auto t = std::jthread{ [constraints, output_dir_path, W = W_, g = coconf_metric_] {
+    auto t = std::jthread{ [time, constraints, output_dir_path, W = W_, g = coconf_metric_] {
         // Assumes grid size of N x 1 x 1!
         const auto N = constraints.hamiltonian.size().Nx;
 
+        // Time:
+
+        {
+            auto time_file =
+                std::fstream(output_dir_path / "time.txt", std::ios::out | std::ios::app);
+            time_file << time << std::endl;
+        }
         // Hamiltonian sum:
 
         {

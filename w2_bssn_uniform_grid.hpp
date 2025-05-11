@@ -95,7 +95,7 @@ class w2_bssn_uniform_grid {
     [[nodiscard]]
     explicit w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag);
 
-    void append_output(const constraints_type&, const std::filesystem::path&);
+    void append_output(const real time, const constraints_type&, const std::filesystem::path&);
 
     [[nodiscard]]
     pre_calculations_type pre_calculations() const;
