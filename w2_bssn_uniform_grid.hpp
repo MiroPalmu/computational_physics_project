@@ -12,6 +12,7 @@
 #include "tensor_buffer.hpp"
 
 struct minkowski_spacetime_tag {};
+struct gauge_wave_spacetime_tag {};
 
 /// Represents grid of point on a 3D spatial slice of 4D space time in bssn formalism
 /// with W^2 conformal decomposition and harmonic gauge condition with zero shift.
@@ -94,6 +95,9 @@ class w2_bssn_uniform_grid {
   public:
     [[nodiscard]]
     explicit w2_bssn_uniform_grid(const grid_size gs, minkowski_spacetime_tag);
+
+    [[nodiscard]]
+    explicit w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacetime_tag);
 
     void append_output(const real time, const constraints_type&, const std::filesystem::path&);
 
