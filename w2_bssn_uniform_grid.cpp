@@ -875,13 +875,13 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     assert(gs.Ny == 1);
     assert(gs.Ny == gs.Nz);
 
-    static constexpr auto A = real{ 0.1 } * static_cast<real>(gird_size_.Nx);
-    const auto d            = static_cast<real>(grid_size.Nx_);
+    const auto A = real{ 0.1 } * static_cast<real>(grid_size_.Nx);
+    const auto d = static_cast<real>(grid_size.Nx_);
 
     // co_metric:
     auto co_metric_ptr = allocate_buffer<2>(grid_size_);
 
-    co_metric_ptr->for_each_index([SPTR(co_metric_ptr), d](const auto idx, const auto tidx) {
+    co_metric_ptr->for_each_index([d, A, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
         const auto diagonal         = tidx[0] == tidx[1];
         (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
 
@@ -918,7 +918,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     //   - co_K
     //      - lapse
 
-    lapse_.for_each_index([this, d](const auto idx) {
+    lapse_.for_each_index([this, d, A](const auto idx) {
         // Assume x coordinates are 0, ..., Nx - 1.
         const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * idx[0] / d);
         lapse_[idx][] = sycl::sqrt(real{ 1 } - H);
@@ -926,11 +926,9 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
 
     auto co_K_ptr = allocate_buffer<2>(grid_size_);
 
-    co_K_ptr->for_each_index([this, SPTR(co_K_ptr)](const auto idx, const auto tidx) {
+    co_K_ptr->for_each_index([this, SPTR(co_K_ptr), d, A](const auto idx, const auto tidx) {
         const auto diagonal    = tidx[0] == tidx[1];
         (*co_K_ptr)[idx][tidx] = static_cast<real>(diagonal);
-
-        const auto d = static_cast<real>(gird_size_.Nx);
 
         static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
         const auto phi               = two_pi * static_cast<real>(idx[0]) / d;
@@ -975,9 +973,9 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     contraconf_christoffel_trace_.for_each_index(
         [this, SPTR(coconf_christoffels_ptr, contraconf_metric_ptr)](const auto idx) {
             u8"mn,ij,jmn"_einsum(contraconf_christoffel_trace_[idx],
-                                 (*coconf_christoffels_ptr)[idx],
-                                 (*coconf_christoffels_ptr)[idx],
-                                 (*contraconf_metric_ptr)[idx]);
+                                 (*contraconf_metric_ptr)[idx],
+                                 (*contraconf_metric_ptr)[idx],
+                                 (*coconf_christoffels_ptr)[idx]);
         });
 
     // We have to wait, because after return this might move before kernel is executed.
