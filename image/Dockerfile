@@ -43,6 +43,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && git clone https://github.com/AdaptiveCpp/AdaptiveCpp \
     && cd AdaptiveCpp \
+    && git checkout v25.02.0 \
     && cmake -DCMAKE_CXX_COMPILER=clang++-20 -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda -DWITH_CUDA_BACKEND=ON -GNinja -Bbuild . \
     && cd build \
     && ninja \
