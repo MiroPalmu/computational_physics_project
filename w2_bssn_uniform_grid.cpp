@@ -35,8 +35,8 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
 
     f.for_each_index([=, SPTR(derivatives_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
-        // const auto juz = idx[1];
-        // const auto kuz = idx[2];
+        const auto juz = idx[1];
+        const auto kuz = idx[2];
 
         const auto i = static_cast<std::ptrdiff_t>(iuz);
         // const auto j = static_cast<std::ptrdiff_t>(juz);

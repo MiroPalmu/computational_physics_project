@@ -55,8 +55,8 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
 
     sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
-        // const auto juz = idx[1];
-        // const auto kuz = idx[2];
+        const auto juz = idx[1];
+        const auto kuz = idx[2];
 
         const auto i = static_cast<std::ptrdiff_t>(iuz);
         // const auto j = static_cast<std::ptrdiff_t>(juz);
