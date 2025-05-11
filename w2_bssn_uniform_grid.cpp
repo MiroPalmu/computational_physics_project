@@ -876,7 +876,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     assert(gs.Ny == gs.Nz);
 
     const auto A = real{ 0.1 } * static_cast<real>(grid_size_.Nx);
-    const auto d = static_cast<real>(grid_size_.Nx_);
+    const auto d = static_cast<real>(grid_size_.Nx);
 
     // co_metric:
     auto co_metric_ptr = allocate_buffer<2>(grid_size_);
