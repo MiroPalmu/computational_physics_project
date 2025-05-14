@@ -921,21 +921,25 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
 
     lapse_.for_each_index([this, d, A](const auto idx) {
         // Assume x coordinates are 0, ..., Nx - 1.
-        const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * idx[0] / d);
+        const auto x  = static_cast<real>(idx[0]);
+        const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
         lapse_[idx][] = sycl::sqrt(real{ 1 } - H);
     });
 
     auto co_K_ptr = allocate_buffer<2>(grid_size_);
 
     co_K_ptr->for_each_index([this, SPTR(co_K_ptr), d, A](const auto idx, const auto tidx) {
-        const auto diagonal    = tidx[0] == tidx[1];
-        (*co_K_ptr)[idx][tidx] = static_cast<real>(diagonal);
+        const auto g00 = (tidx[0] == 0uz) and (tidx[1] == 0uz);
 
-        static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
-        const auto phi               = two_pi * static_cast<real>(idx[0]) / d;
-
-        (*co_K_ptr)[idx][tidx] *= -A * std::numbers::pi_v<real> * sycl::cos(phi);
-        (*co_K_ptr)[idx][tidx] /= lapse_[idx][] * d;
+        if (not g00) {
+            (*co_K_ptr)[idx][tidx] = 0;
+        } else {
+            static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
+            const auto x                 = static_cast<real>(idx[0]);
+            const auto phi               = two_pi * x / d;
+            (*co_K_ptr)[idx][tidx]       = -two_pi * A * sycl::cos(phi);
+            (*co_K_ptr)[idx][tidx] /= real{ 2 } * lapse_[idx][] * d;
+        }
     });
 
     K_.for_each_index([this, SPTR(contra_metric_ptr, co_K_ptr)](const auto idx) {
