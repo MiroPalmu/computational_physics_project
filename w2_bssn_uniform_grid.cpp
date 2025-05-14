@@ -888,7 +888,6 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
 
         const auto g0 = tidx[0] == 0;
         if (diagonal and g0) {
-            static constexpr auto A = real{ 0.1 };
 
             // Assume x coordinates are 0, ..., Nx - 1.
             const auto x = static_cast<real>(idx[0]);
