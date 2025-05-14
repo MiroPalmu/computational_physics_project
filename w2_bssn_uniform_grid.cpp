@@ -848,12 +848,13 @@ w2_bssn_uniform_grid::pre_calculations() const {
             return M_derivative_ptr;
         });
 
-        // Used in NR101.
-        static constexpr auto damping_coeff = real{ 0.025 };
-
         dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, dfdt_ptr), this](const auto idx,
                                                                            const auto tidx) {
             const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
+
+            // 0.025 is used in NR101.
+            const auto damping_coeff = real{ 0.025 } / static_cast<real>(this->grid_size_.Nx);
+
             dfdt_ptr->coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
         });
 
