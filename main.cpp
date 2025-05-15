@@ -56,6 +56,7 @@ main(int argc, char** argv) {
              << std::format("time steps, dt: {}, {}\n", time_steps, dt)
              << std::format("implicit euler substeps: {}\n", substeps)
              << std::format("W clamp: {}\n", W_clamp)
+             << std::format("Km (momentum damping coeff): {}\n", km)
              << std::format("Kreiss-Oliger dissipation: {}\n", not disable_kreiss)
              << std::format("output interval: {}\n", output_interval) << std::flush;
 
