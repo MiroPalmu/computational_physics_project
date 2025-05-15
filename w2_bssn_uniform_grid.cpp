@@ -224,7 +224,7 @@ w2_bssn_uniform_grid::constraints_type::constraints_type(const grid_size gs)
 
 void
 w2_bssn_uniform_grid::enforce_algebraic_constraints() {
-    auto [det_ptr, contraconf_metric_ptr] = det_n_inv3D(coconf_metric_);
+    auto [det_ptr, _] = det_n_inv3D(coconf_metric_);
 
     coconf_metric_.for_each_index([SPTR(det_ptr), this](const auto idx) {
         const auto det3 = sycl::pow((*det_ptr)[idx][], real{ -1 } / real{ 3 });
@@ -239,6 +239,8 @@ w2_bssn_uniform_grid::enforce_algebraic_constraints() {
         coconf_metric_[idx][2, 1] *= det3;
         coconf_metric_[idx][2, 2] *= det3;
     });
+
+    auto [_, contraconf_metric_ptr] = det_n_inv3D(coconf_metric_);
 
     auto trace_remover_ptr = allocate_buffer<2>(grid_size_);
 
