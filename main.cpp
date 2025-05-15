@@ -28,6 +28,7 @@ main(int argc, char** argv) {
     const auto dt             = read_env("DT", real{ 0.001 });
     const auto disable_kreiss = read_env("DISABLE_KREISS", false);
     const auto km             = read_env("KM", real{ 0.025 });
+    const auto use_minkowski  = read_env("MINKOWSKI", false);
 
     const auto [N, time_steps] = [&] {
         if (argc != 3) {
@@ -58,14 +59,20 @@ main(int argc, char** argv) {
              << std::format("W clamp: {}\n", W_clamp)
              << std::format("Km (momentum damping coeff): {}\n", km)
              << std::format("Kreiss-Oliger dissipation: {}\n", not disable_kreiss)
+             << std::format("Minkowski: {}\n", use_minkowski)
              << std::format("output interval: {}\n", output_interval) << std::flush;
 
     auto step_log_file = std::ofstream{ output_dir / "steps" };
 
     auto t = real{ 0 };
 
-    // auto base = allocate_shared_w2(grid_size{ N, N, N }, minkowski_spacetime_tag{});
-    auto base = allocate_shared_w2(grid_size{ N, 1, 1 }, gauge_wave_spacetime_tag{});
+    auto base = [&] {
+        if (use_minkowski) {
+            return allocate_shared_w2(grid_size{ N, 1, 1 }, minkowski_spacetime_tag{});
+        } else {
+            return allocate_shared_w2(grid_size{ N, 1, 1 }, gauge_wave_spacetime_tag{});
+        }
+    };
 
     for (const auto step_ordinal : rv::iota(0uz, time_steps)) {
         const auto start = std::chrono::steady_clock::now();
