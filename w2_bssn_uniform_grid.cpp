@@ -409,6 +409,9 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
         tensor_buffer_queue.wait();
     }
 
+    // Store for Hamiltonian constraint
+    auto co_R_ptr = allocate_buffer<2>(grid_size_);
+
     static constexpr auto two = constant_geometric_mdspan<0, 3, real{ 2 }>();
     { // calculate dfdt_ptr->coconf_A
         auto term1_ptr = allocate_buffer<2>(grid_size_);
@@ -652,6 +655,12 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
                 return term1_ptr;
             });
 
+            co_R_ptr->for_each_index([SPTR(co_R_ptr, coconf_R_ptr, coconf_W2Rw_ptr),
+                                      this](const auto idx, const auto tidx) {
+                (*co_R_ptr)[idx][tidx] = coconf_R_ptr[idx][tidx]
+                                         + (coconf_W2Rw_ptr[idx][tidx] / (W_[idx][] * W_[idx][]));
+            });
+
             auto lapseW2R_ptr = allocate_buffer<2>(grid_size_);
 
             lapseW2R_ptr->for_each_index([SPTR(lapseW2R_ptr, coconf_W2Rw_ptr, coconf_R_ptr),
@@ -824,6 +833,26 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
         }
 
         constraints_ptr->momentum = std::move(*term1_ptr);
+    }
+
+    { // Hamiltonian constraint
+
+        auto R_ptr = allocate_buffer<0>(grid_size_);
+        R_ptr->for_each_index([SPTR(R_ptr, co_R_ptr, contra_metric_ptr)](const auto idx) {
+            u8"ij,ij"_einsum((*R_ptr)[idx], (*contra_metric_ptr)[idx], (*co_R_ptr)[idx]);
+        });
+
+        auto AA_ptr = allocate_buffer<0>(grid_size_);
+        AA_ptr->for_each_index([SPTR(AA_ptr, contraconf_A_ptr), this](const auto idx) {
+            u8"ij,ij"_einsum((*AA_ptr)[idx], (*contraconf_A_ptr)[idx], coconf_A_[idx]);
+        });
+
+        constraints_ptr->hamiltonian.for_each_index([SPTR(R_ptr, AA_ptr), this](const auto idx) {
+            const auto a       = (*R_ptr)[idx][];
+            const auto b       = real{ 2 } * K_[idx][] * K_[idx][] / real{ 3 };
+            const auto c       = AA_ptr[idx][];
+            (*co_R_ptr)[idx][] = a + b - c;
+        });
     }
 
     { // momentum constraint damping
