@@ -97,6 +97,8 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
             + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx]
             + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
+        // Here we only divide by one dx as rest are cancelled by dx^5
+        // from Kreiss-Oliger dissipation coefficient multiplying this sum.
         (*sum_ptr)[idx][tidx] /= dx;
 
         // y
@@ -129,7 +131,7 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
     // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
     const auto dx = real{ 1 } / static_cast<real>(Nx);
 
-    const auto coeff = epsilon * dx * dx * dx * dx * dx / real{ 64 };
+    const auto coeff = epsilon / real{ 64 };
 
     {
         const auto lapse_derivative_sum_ptr =
