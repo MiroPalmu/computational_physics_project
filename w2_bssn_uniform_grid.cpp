@@ -854,12 +854,14 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
             return M_derivative_ptr;
         });
 
-        dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, dfdt_ptr), this, km](const auto idx,
-                                                                               const auto tidx) {
-            const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
+        dfdt_ptr->coconf_A.for_each_index(
+            [SPTR(DiMj_ptr, dfdt_ptr), this, km](const auto idx, const auto tidx) {
+                const auto lhs      = (*DiMj_ptr)[idx][tidx];
+                const auto rhs      = (*DiMj_ptr)[idx][std::array{ tidx[1], tidx[0] }];
+                const auto symmDiMj = (lhs + rhs) / real{ 2 };
 
-            dfdt_ptr->coconf_A[idx][tidx] += km * lapse_[idx][] * symmDiMj;
-        });
+                dfdt_ptr->coconf_A[idx][tidx] += km * lapse_[idx][] * symmDiMj;
+            });
 
         tensor_buffer_queue.wait();
     }
