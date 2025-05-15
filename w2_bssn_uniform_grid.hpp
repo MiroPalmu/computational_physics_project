@@ -61,7 +61,8 @@ class w2_bssn_uniform_grid {
         time_derivative_type(const grid_size);
 
         /// Applies 6th order Kreiss-Oliger dissipation to derivatives.
-        void kreiss_oliger_6th_order(const std::shared_ptr<w2_bssn_uniform_grid>&);
+        void kreiss_oliger_6th_order(const std::shared_ptr<w2_bssn_uniform_grid>&,
+                                     const real epsilon);
     };
 
     friend time_derivative_type;

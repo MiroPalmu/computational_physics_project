@@ -127,8 +127,11 @@ void
 w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
     const std::shared_ptr<w2_bssn_uniform_grid>& U,
     const real epsilon) {
+    const auto [Nx, _, _] = this->lapse.size();
+    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+    const auto dx = real{ 1 } / static_cast<real>(Nx);
 
-    const auto coeff = epsilon / real{ 64 };
+    const auto coeff = epsilon * dx * dx * dx * dx * dx / real{ 64 };
 
     {
         const auto lapse_derivative_sum_ptr =
@@ -142,7 +145,8 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
                 U->K_);
         W.for_each_index(
             [SPTR(lapse_derivative_sum_ptr, W_derivative_sum_ptr, K_derivative_sum_ptr),
-             this](const auto idx) {
+             this,
+             coeff](const auto idx) {
                 lapse[idx][] += coeff * (*lapse_derivative_sum_ptr)[idx][];
                 W[idx][] += coeff * (*W_derivative_sum_ptr)[idx][];
                 K[idx][] += coeff * (*K_derivative_sum_ptr)[idx][];
@@ -156,8 +160,8 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
                 U->contraconf_christoffel_trace_);
 
         contraconf_christoffel_trace.for_each_index(
-            [SPTR(contraconf_christoffel_trace_derivative_sum_ptr), this](const auto idx,
-                                                                          const auto tidx) {
+            [SPTR(contraconf_christoffel_trace_derivative_sum_ptr), this, coeff](const auto idx,
+                                                                                 const auto tidx) {
                 contraconf_christoffel_trace[idx][tidx] +=
                     coeff * (*contraconf_christoffel_trace_derivative_sum_ptr)[idx][tidx];
             });
@@ -170,7 +174,7 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
                 U->coconf_metric_);
 
         coconf_metric.for_each_index(
-            [SPTR(coconf_metric_derivative_sum_ptr), this](const auto idx, const auto tidx) {
+            [SPTR(coconf_metric_derivative_sum_ptr), this, coeff](const auto idx, const auto tidx) {
                 coconf_metric[idx][tidx] += coeff * (*coconf_metric_derivative_sum_ptr)[idx][tidx];
             });
         tensor_buffer_queue.wait();
