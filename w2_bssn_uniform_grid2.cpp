@@ -41,7 +41,7 @@ namespace finite_difference {
 
 /// Calculates derivative of arbitrary tensor T_{abc...} -> T_{abc...,i}
 ///
-/// Assumes that tensor buffer elements are at seperated by h = 1.
+/// Assumes that tensor buffer elements are at seperated by dx = 1 / Nx.
 template<std::size_t rank, typename T, typename Allocator>
 [[nodiscard]]
 auto
@@ -52,6 +52,9 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
     auto* const f_ptr = &f;
     // const auto [fNx, fNy, fNz] = f.size();
     const auto [fNx, _, _] = f.size();
+
+    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+    const auto dx = real{ 1 } / static_cast<real>(fNx);
 
     sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -93,6 +96,9 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
             + b * (*f_ptr)[{ im1, juz, kuz }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
             + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx]
             + (*f_ptr)[{ ip3, juz, kuz }][tidx];
+
+        (*sum_ptr)[idx][tidx] /= dx;
+
 
         // y
         // (*sum_ptr)[idx][tidx] +=
