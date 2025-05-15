@@ -191,59 +191,70 @@ void
 w2_bssn_uniform_grid::append_output(const real time,
                                     const constraints_type& constraints,
                                     const std::filesystem::path& output_dir_path) {
-    auto t = std::jthread{ [time, constraints, output_dir_path, W = W_, g = coconf_metric_] {
-        // Assumes grid size of N x 1 x 1!
-        const auto N = constraints.hamiltonian.size().Nx;
+    auto t = std::jthread{
+        [time, constraints, output_dir_path, W = W_, g = coconf_metric_, lapse = lapse_] {
+            // Assumes grid size of N x 1 x 1!
+            const auto N = constraints.hamiltonian.size().Nx;
 
-        // Time:
+            // Time:
 
-        {
-            auto time_file =
-                std::fstream(output_dir_path / "time.txt", std::ios::out | std::ios::app);
-            time_file << time << std::endl;
-        }
-        // Hamiltonian sum:
-
-        {
-            auto hsum_file = std::fstream(output_dir_path / "hamiltonian_sum.txt",
-                                          std::ios::out | std::ios::app);
-            auto Hsum      = real{ 0 };
-            for (const auto i : rv::iota(0uz, N)) {
-                Hsum +=
-                    constraints.hamiltonian[i, 0uz, 0uz][] * constraints.hamiltonian[i, 0uz, 0uz][];
+            {
+                auto time_file =
+                    std::fstream(output_dir_path / "time.txt", std::ios::out | std::ios::app);
+                time_file << time << std::endl;
             }
-            hsum_file << Hsum << std::endl;
-        }
+            // Hamiltonian sum:
 
-        // Momentum sum:
-
-        {
-            auto msum_file =
-                std::fstream(output_dir_path / "momentum_sum.txt", std::ios::out | std::ios::app);
-
-            auto Msum = real{ 0 };
-            for (const auto n : rv::iota(0uz, N)) {
-                for (const auto i : rv::iota(0uz, 3uz)) {
-                    Msum +=
-                        constraints.momentum[n, 0uz, 0uz][i] * constraints.momentum[n, 0uz, 0uz][i];
+            {
+                auto hsum_file = std::fstream(output_dir_path / "hamiltonian_sum.txt",
+                                              std::ios::out | std::ios::app);
+                auto Hsum      = real{ 0 };
+                for (const auto i : rv::iota(0uz, N)) {
+                    Hsum += constraints.hamiltonian[i, 0uz, 0uz][]
+                            * constraints.hamiltonian[i, 0uz, 0uz][];
                 }
+                hsum_file << Hsum << std::endl;
             }
-            msum_file << Msum << std::endl;
-        }
 
-        // g_00 grid:
+            // Momentum sum:
 
-        {
-            auto g00_file =
-                std::fstream(output_dir_path / "g00.txt", std::ios::out | std::ios::app);
+            {
+                auto msum_file = std::fstream(output_dir_path / "momentum_sum.txt",
+                                              std::ios::out | std::ios::app);
 
-            for (const auto n : rv::iota(0uz, N)) {
-                const auto g00 = g[n, 0uz, 0uz][0, 0] * W[n, 0uz, 0uz][] * W[n, 0uz, 0uz][];
-                g00_file << g00 << " ";
+                auto Msum = real{ 0 };
+                for (const auto n : rv::iota(0uz, N)) {
+                    for (const auto i : rv::iota(0uz, 3uz)) {
+                        Msum += constraints.momentum[n, 0uz, 0uz][i]
+                                * constraints.momentum[n, 0uz, 0uz][i];
+                    }
+                }
+                msum_file << Msum << std::endl;
             }
-            g00_file << std::endl;
+
+            // g_00 grid:
+
+            {
+                auto g00_file =
+                    std::fstream(output_dir_path / "g00.txt", std::ios::out | std::ios::app);
+
+                for (const auto n : rv::iota(0uz, N)) {
+                    const auto g00 = g[n, 0uz, 0uz][0, 0] * W[n, 0uz, 0uz][] * W[n, 0uz, 0uz][];
+                    g00_file << g00 << " ";
+                }
+                g00_file << std::endl;
+            }
+
+            // lapse grid:
+            {
+                auto lapse_file =
+                    std::fstream(output_dir_path / "lapse.txt", std::ios::out | std::ios::app);
+
+                for (const auto n : rv::iota(0uz, N)) { lapse_file << lapse[n, 0uz, 0uz][] << " "; }
+                lapse_file << std::endl;
+            }
         }
-    } };
+    };
 
     t.detach();
 }
