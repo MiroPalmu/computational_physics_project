@@ -27,6 +27,7 @@ main(int argc, char** argv) {
     const auto W_clamp        = read_env("W_CLAMP", real{ 0.0001 });
     const auto dt             = read_env("DT", real{ 0.001 });
     const auto disable_kreiss = read_env("DISABLE_KREISS", false);
+    const auto km             = read_env("KM", real{ 0.025 });
 
     const auto [N, time_steps] = [&] {
         if (argc != 3) {
@@ -76,7 +77,7 @@ main(int argc, char** argv) {
         base->enforce_algebraic_constraints();
 
         auto iter_step = [&] {
-            const auto pre1 = base->pre_calculations();
+            const auto pre1 = base->pre_calculations(km);
 
             return base->euler_step(pre1.dfdt, dt);
         }();
@@ -88,7 +89,7 @@ main(int argc, char** argv) {
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {
             iter_step->clamp_W(W_clamp);
             iter_step->enforce_algebraic_constraints();
-            auto pre = iter_step->pre_calculations();
+            auto pre = iter_step->pre_calculations(km);
 
             if (not disable_kreiss and substep_ordinal == substeps - 1uz) {
                 pre.dfdt->kreiss_oliger_6th_order(base);

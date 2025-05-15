@@ -102,7 +102,7 @@ class w2_bssn_uniform_grid {
     void append_output(const real time, const constraints_type&, const std::filesystem::path&);
 
     [[nodiscard]]
-    pre_calculations_type pre_calculations() const;
+    pre_calculations_type pre_calculations(const real km) const;
 
     [[nodiscard]]
     std::shared_ptr<w2_bssn_uniform_grid> euler_step(const std::shared_ptr<time_derivative_type>&,
