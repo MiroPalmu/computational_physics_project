@@ -80,8 +80,9 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         static constexpr auto b = T{ 2 } / T{ 3 };
 
         (*derivatives_ptr)[idx][xtidx] =
-            a * (*f_ptr)[{ im2, juz, kuz }][tidx] - b * (*f_ptr)[{ im1, juz, kuz }][tidx]
-            + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx];
+            a * ((*f_ptr)[{ im2, juz, kuz }][tidx] - (*f_ptr)[{ ip2, juz, kuz }][tidx]);
+        (*derivatives_ptr)[idx][xtidx] +=
+            b * ((*f_ptr)[{ ip1, juz, kuz }][tidx] - (*f_ptr)[{ im1, juz, kuz }][tidx]);
 
         (*derivatives_ptr)[idx][xtidx] /= dx;
 
