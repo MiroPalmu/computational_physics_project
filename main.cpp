@@ -23,12 +23,12 @@ sycl::queue tensor_buffer_queue =
 
 int
 main(int argc, char** argv) {
-    const auto substeps       = read_env("SUBSTEPS", 2uz);
-    const auto W_clamp        = read_env("W_CLAMP", real{ 0.0001 });
-    const auto dt             = read_env("DT", real{ 0.001 });
-    const auto disable_kreiss = read_env("DISABLE_KREISS", false);
-    const auto km             = read_env("KM", real{ 0.025 });
-    const auto use_minkowski  = read_env("MINKOWSKI", false);
+    const auto substeps      = read_env("SUBSTEPS", 2uz);
+    const auto W_clamp       = read_env("W_CLAMP", real{ 0.0001 });
+    const auto dt            = read_env("DT", real{ 0.001 });
+    const auto kreiss_coeff  = read_env("KREISS_COEFF", real{ 0.25 });
+    const auto km            = read_env("KM", real{ 0.025 });
+    const auto use_minkowski = read_env("MINKOWSKI", false);
 
     const auto [N, time_steps] = [&] {
         if (argc != 3) {
@@ -58,7 +58,7 @@ main(int argc, char** argv) {
              << std::format("implicit euler substeps: {}\n", substeps)
              << std::format("W clamp: {}\n", W_clamp)
              << std::format("Km (momentum damping coeff): {}\n", km)
-             << std::format("Kreiss-Oliger dissipation: {}\n", not disable_kreiss)
+             << std::format("Kreiss-Oliger coeff: {}\n", kreiss_coeff)
              << std::format("Minkowski: {}\n", use_minkowski)
              << std::format("output interval: {}\n", output_interval) << std::flush;
 
@@ -99,8 +99,8 @@ main(int argc, char** argv) {
             iter_step->enforce_algebraic_constraints();
             auto pre = iter_step->pre_calculations(km);
 
-            if (not disable_kreiss and substep_ordinal == substeps - 1uz) {
-                pre.dfdt->kreiss_oliger_6th_order(base);
+            if (substep_ordinal == substeps - 1uz) {
+                pre.dfdt->kreiss_oliger_6th_order(base, kreiss_coeff);
             }
             if (make_output) { constraints_storage_for_output = pre.constraints; }
             iter_step = base->euler_step(pre.dfdt, dt);
