@@ -53,6 +53,7 @@ target_sources(main
     ranges.hpp
     grid_types.hpp
     mdspan_utils.hpp
+    env.hpp
 )
 
 add_sycl_to_target(TARGET main)
