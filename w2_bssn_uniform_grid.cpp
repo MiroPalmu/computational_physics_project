@@ -24,7 +24,7 @@ namespace finite_difference {
 
 /// Calculates derivative of arbitrary tensor T_{abc...} -> T_{abc...,i}
 ///
-/// Assumes that tensor buffer elements are at seperated by h = 1.
+/// Assumes that tensor buffer elements are at seperated by dx = 1 / Nx.
 template<std::size_t rank, typename T, typename Allocator>
 [[nodiscard]]
 auto
@@ -34,6 +34,9 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
     auto* const f_ptr = &f;
     // const auto [fNx, fNy, fNz] = f.size();
     const auto [fNx, _, _] = f.size();
+
+    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+    const auto dx = real{ 1 } / static_cast<real>(fNx);
 
     f.for_each_index([=, SPTR(derivatives_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
@@ -79,6 +82,8 @@ periodic_4th_order_central_1st_derivative(const tensor_buffer<rank, 3uz, T, Allo
         (*derivatives_ptr)[idx][xtidx] =
             a * (*f_ptr)[{ im2, juz, kuz }][tidx] - b * (*f_ptr)[{ im1, juz, kuz }][tidx]
             + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx];
+
+        (*derivatives_ptr)[idx][xtidx] /= dx;
 
         (*derivatives_ptr)[idx][ytidx] = real{ 0 };
         //     a * (*f_ptr)[{ iuz, jm2, kuz }][tidx] - b * (*f_ptr)[{ iuz, jm1, kuz }][tidx]
@@ -877,25 +882,26 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     assert(gs.Ny == gs.Nz);
 
     const auto A = real{ 0.1 };
-    const auto d = static_cast<real>(grid_size_.Nx);
+    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+    const auto d = real{ 1 };
 
     // co_metric:
     auto co_metric_ptr = allocate_buffer<2>(grid_size_);
 
-    co_metric_ptr->for_each_index([d, A, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
-        const auto diagonal         = tidx[0] == tidx[1];
-        (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
+    co_metric_ptr->for_each_index(
+        [this, d, A, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
+            const auto diagonal         = tidx[0] == tidx[1];
+            (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
 
-        const auto g0 = tidx[0] == 0;
-        if (diagonal and g0) {
+            const auto g0 = tidx[0] == 0;
+            if (diagonal and g0) {
+                // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+                const auto x = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
+                const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
 
-            // Assume x coordinates are 0, ..., Nx - 1.
-            const auto x = static_cast<real>(idx[0]);
-            const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
-
-            (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
-        }
-    });
+                (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
+            }
+        });
 
     // W:
     //   - det(co_metric)
@@ -920,8 +926,8 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     //      - lapse
 
     lapse_.for_each_index([this, d, A](const auto idx) {
-        // Assume x coordinates are 0, ..., Nx - 1.
-        const auto x  = static_cast<real>(idx[0]);
+        // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+        const auto x  = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
         const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
         lapse_[idx][] = sycl::sqrt(real{ 1 } - H);
     });
@@ -935,9 +941,10 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
             (*co_K_ptr)[idx][tidx] = 0;
         } else {
             static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
-            const auto x                 = static_cast<real>(idx[0]);
-            const auto phi               = two_pi * x / d;
-            (*co_K_ptr)[idx][tidx]       = -two_pi * A * sycl::cos(phi);
+            // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+            const auto x   = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
+            const auto phi = two_pi * x / d;
+            (*co_K_ptr)[idx][tidx] = -two_pi * A * sycl::cos(phi);
             (*co_K_ptr)[idx][tidx] /= real{ 2 } * lapse_[idx][] * d;
         }
     });
