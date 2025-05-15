@@ -885,19 +885,20 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
     // co_metric:
     auto co_metric_ptr = allocate_buffer<2>(grid_size_);
 
-    co_metric_ptr->for_each_index([d, A, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
-        const auto diagonal         = tidx[0] == tidx[1];
-        (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
+    co_metric_ptr->for_each_index(
+        [this, d, A, SPTR(co_metric_ptr)](const auto idx, const auto tidx) {
+            const auto diagonal         = tidx[0] == tidx[1];
+            (*co_metric_ptr)[idx][tidx] = static_cast<real>(diagonal);
 
-        const auto g0 = tidx[0] == 0;
-        if (diagonal and g0) {
-            // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
-            const auto x = static_cast<real>(idx[0]) / static_cast<real>(Nx);
-            const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
+            const auto g0 = tidx[0] == 0;
+            if (diagonal and g0) {
+                // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+                const auto x = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
+                const auto H = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
 
-            (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
-        }
-    });
+                (*co_metric_ptr)[idx][tidx] *= real{ 1 } - H;
+            }
+        });
 
     // W:
     //   - det(co_metric)
@@ -923,7 +924,7 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
 
     lapse_.for_each_index([this, d, A](const auto idx) {
         // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
-        const auto x  = static_cast<real>(idx[0]) / static_cast<real>(Nx);
+        const auto x  = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
         const auto H  = A * sycl::sin(real{ 2 } * std::numbers::pi_v<real> * x / d);
         lapse_[idx][] = sycl::sqrt(real{ 1 } - H);
     });
