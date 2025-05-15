@@ -92,14 +92,17 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
 
         // x
         (*sum_ptr)[idx][tidx] =
-            (*f_ptr)[{ im3, juz, kuz }][tidx] - a * (*f_ptr)[{ im2, juz, kuz }][tidx]
-            + b * (*f_ptr)[{ im1, juz, kuz }][tidx] - c * (*f_ptr)[{ iuz, juz, kuz }][tidx]
-            + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx]
-            + (*f_ptr)[{ ip3, juz, kuz }][tidx];
+            (*f_ptr)[{ im3, juz, kuz }][tidx] + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
-        // Here we only divide by one dx as rest are cancelled by dx^5
-        // from Kreiss-Oliger dissipation coefficient multiplying this sum.
-        (*sum_ptr)[idx][tidx] /= dx;
+        (*sum_ptr)[idx][tidx] +=
+            -a * ((*f_ptr)[{ im2, juz, kuz }][tidx] + (*f_ptr)[{ ip2, juz, kuz }][tidx]);
+
+        (*sum_ptr)[idx][tidx] +=
+            b * ((*f_ptr)[{ im1, juz, kuz }][tidx] + (*f_ptr)[{ ip1, juz, kuz }][tidx]);
+
+        (*sum_ptr)[idx][tidx] += c * (*f_ptr)[{ iuz, juz, kuz }][tidx];
+
+        // Here we don't divide because it is done in Kreiss-Oliger.
 
         // y
         // (*sum_ptr)[idx][tidx] +=
@@ -127,8 +130,12 @@ void
 w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
     const std::shared_ptr<w2_bssn_uniform_grid>& U,
     const real epsilon) {
+    const auto [Nx, _, _] = this->W.size();
 
-    const auto coeff = epsilon / real{ 64 };
+    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+    const auto dx = real{ 1 } / static_cast<real>(Nx);
+
+    const auto coeff = epsilon / real{ 64 * dx };
 
     {
         const auto lapse_derivative_sum_ptr =
