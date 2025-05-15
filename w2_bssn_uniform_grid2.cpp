@@ -53,9 +53,6 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
     // const auto [fNx, fNy, fNz] = f.size();
     const auto [fNx, _, _] = f.size();
 
-    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
-    const auto dx = real{ 1 } / static_cast<real>(fNx);
-
     sum_ptr->for_each_index([=, SPTR(sum_ptr)](const auto idx, const auto tidx) {
         const auto iuz = idx[0];
         const auto juz = idx[1];
@@ -86,21 +83,20 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
         // const auto kp2 = (fNz + k + 2) % fNz;
         // const auto kp3 = (fNz + k + 3) % fNz;
 
-        static constexpr auto a = T{ 6 };
-        static constexpr auto b = T{ 15 };
-        static constexpr auto c = T{ 20 };
-
         // x
-        (*sum_ptr)[idx][tidx] =
-            (*f_ptr)[{ im3, juz, kuz }][tidx] + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
-        (*sum_ptr)[idx][tidx] +=
-            -a * ((*f_ptr)[{ im2, juz, kuz }][tidx] + (*f_ptr)[{ ip2, juz, kuz }][tidx]);
+        const auto p1 = (*f_ptr)[{ im3, juz, kuz }][tidx] + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
-        (*sum_ptr)[idx][tidx] +=
-            b * ((*f_ptr)[{ im1, juz, kuz }][tidx] + (*f_ptr)[{ ip1, juz, kuz }][tidx]);
+        static constexpr auto a = T{ -6 };
+        const auto p2 = a * ((*f_ptr)[{ im2, juz, kuz }][tidx] + (*f_ptr)[{ ip2, juz, kuz }][tidx]);
 
-        (*sum_ptr)[idx][tidx] += c * (*f_ptr)[{ iuz, juz, kuz }][tidx];
+        static constexpr auto b = T{ 15 };
+        const auto p3 = b * ((*f_ptr)[{ im1, juz, kuz }][tidx] + (*f_ptr)[{ ip1, juz, kuz }][tidx]);
+
+        static constexpr auto c = T{ -20 };
+        const auto p4           = c * (*f_ptr)[{ iuz, juz, kuz }][tidx];
+
+        (*sum_ptr)[idx][tidx] = p1 + p2 + p3 + p4;
 
         // Here we don't divide because it is done in Kreiss-Oliger.
 
@@ -135,7 +131,7 @@ w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
     // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
     const auto dx = real{ 1 } / static_cast<real>(Nx);
 
-    const auto coeff = epsilon / real{ 64 * dx };
+    const auto coeff = epsilon / (real{ 64 } * dx);
 
     {
         const auto lapse_derivative_sum_ptr =
