@@ -13,19 +13,21 @@
 
 #include <sycl/sycl.hpp>
 
+#include "env.hpp"
 #include "grid_types.hpp"
 #include "tensor_buffer.hpp"
 #include "w2_bssn_uniform_grid.hpp"
-
-static constexpr auto substeps = 2uz;
-static constexpr auto W_clamp  = real{ 0.0001 };
 
 sycl::queue tensor_buffer_queue =
     sycl::queue(sycl::cpu_selector_v, { sycl::property::queue::in_order{} });
 
 int
 main(int argc, char** argv) {
-    const auto [N, time_steps, dt] = [&] {
+    const auto substeps = read_env("SUBSTEPS", 2uz);
+    const auto W_clamp  = read_env("W_CLAMP", real{ 0.0001 });
+    const auto dt       = read_env("DT", real{ 0.001 });
+
+    const auto [N, time_steps] = [&] {
         if (argc != 3) {
             std::println("Wrong amount of arguments:!");
             std::println("usage: main N time_steps");
@@ -38,7 +40,7 @@ main(int argc, char** argv) {
         std::size_t n, steps;
         ss >> n >> steps;
         // Deduced from NR101 which has simulation width of 1 and time step 0.001.
-        return std::tuple{ n, steps, 0.001 * n };
+        return std::tuple{ n, steps };
     }();
 
     const auto output_interval = rn::max(1uz, static_cast<std::size_t>(time_steps / 100.0));
