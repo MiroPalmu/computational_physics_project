@@ -127,9 +127,6 @@ void
 w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
     const std::shared_ptr<w2_bssn_uniform_grid>& U,
     const real epsilon) {
-    const auto [Nx, _, _] = this->lapse.size();
-    // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
-    const auto dx = real{ 1 } / static_cast<real>(Nx);
 
     const auto coeff = epsilon / real{ 64 };
 
