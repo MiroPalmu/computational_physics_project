@@ -855,6 +855,7 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
                 const auto c                        = (*AA_ptr)[idx][];
                 constraints_ptr->hamiltonian[idx][] = a + b - c;
             });
+        tensor_buffer_queue.wait();
     }
 
     { // momentum constraint damping
