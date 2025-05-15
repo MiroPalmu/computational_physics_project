@@ -97,6 +97,8 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
             + b * (*f_ptr)[{ ip1, juz, kuz }][tidx] - a * (*f_ptr)[{ ip2, juz, kuz }][tidx]
             + (*f_ptr)[{ ip3, juz, kuz }][tidx];
 
+        // Here we only divide by one dx as rest are cancelled by dx^5
+        // from Kreiss-Oliger dissipation coefficient multiplying this sum.
         (*sum_ptr)[idx][tidx] /= dx;
 
 
@@ -124,9 +126,10 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
 
 void
 w2_bssn_uniform_grid::time_derivative_type::kreiss_oliger_6th_order(
-    const std::shared_ptr<w2_bssn_uniform_grid>& U) {
-    /// Hard coded from NR101.
-    static constexpr auto coeff = real{ 0.25 } / real{ 64 };
+    const std::shared_ptr<w2_bssn_uniform_grid>& U,
+    const real epsilon) {
+
+    const auto coeff = epsilon / real{ 64 };
 
     {
         const auto lapse_derivative_sum_ptr =
