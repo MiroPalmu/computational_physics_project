@@ -264,7 +264,7 @@ w2_bssn_uniform_grid::enforce_algebraic_constraints() {
 }
 
 w2_bssn_uniform_grid::pre_calculations_type
-w2_bssn_uniform_grid::pre_calculations() const {
+w2_bssn_uniform_grid::pre_calculations(const real km) const {
     auto dfdt_ptr =
         std::allocate_shared<time_derivative_type>(allocator{ tensor_buffer_queue }, grid_size_);
 
@@ -853,14 +853,11 @@ w2_bssn_uniform_grid::pre_calculations() const {
             return M_derivative_ptr;
         });
 
-        dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, dfdt_ptr), this](const auto idx,
-                                                                           const auto tidx) {
+        dfdt_ptr->coconf_A.for_each_index([SPTR(DiMj_ptr, dfdt_ptr), this, km](const auto idx,
+                                                                               const auto tidx) {
             const auto symmDiMj = real{ 0.5 } * ((*DiMj_ptr)[idx][tidx] + (*DiMj_ptr)[idx][tidx]);
 
-            // 0.025 is used in NR101.
-            const auto damping_coeff = real{ 50 } * static_cast<real>(this->grid_size_.Nx);
-
-            dfdt_ptr->coconf_A[idx][tidx] += damping_coeff * lapse_[idx][] * symmDiMj;
+            dfdt_ptr->coconf_A[idx][tidx] += km * lapse_[idx][] * symmDiMj;
         });
 
         tensor_buffer_queue.wait();
