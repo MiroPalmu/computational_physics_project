@@ -938,9 +938,10 @@ w2_bssn_uniform_grid::w2_bssn_uniform_grid(const grid_size gs, gauge_wave_spacet
             (*co_K_ptr)[idx][tidx] = 0;
         } else {
             static constexpr auto two_pi = real{ 2 } * std::numbers::pi_v<real>;
-            const auto x                 = static_cast<real>(idx[0]);
-            const auto phi               = two_pi * x / d;
-            (*co_K_ptr)[idx][tidx]       = -two_pi * A * sycl::cos(phi);
+            // Assume that x coordinates are 0, 1 / Nx, ..., (Nx - 1) / Nx.
+            const auto x   = static_cast<real>(idx[0]) / static_cast<real>(this->grid_size_.Nx);
+            const auto phi = two_pi * x / d;
+            (*co_K_ptr)[idx][tidx] = -two_pi * A * sycl::cos(phi);
             (*co_K_ptr)[idx][tidx] /= real{ 2 } * lapse_[idx][] * d;
         }
     });
