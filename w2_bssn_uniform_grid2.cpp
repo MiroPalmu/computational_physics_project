@@ -99,7 +99,6 @@ periodic_2th_order_central_6th_order_kreiss_oliger_derivative_sum(
 
         (*sum_ptr)[idx][tidx] /= dx;
 
-
         // y
         // (*sum_ptr)[idx][tidx] +=
         //     (*f_ptr)[{ iuz, jm3, kuz }][tidx] - a * (*f_ptr)[{ iuz, jm2, kuz }][tidx]
@@ -203,7 +202,8 @@ w2_bssn_uniform_grid::append_output(const real time,
                                           std::ios::out | std::ios::app);
             auto Hsum      = real{ 0 };
             for (const auto i : rv::iota(0uz, N)) {
-                Hsum += constraints.hamiltonian[i, 0uz, 0uz][];
+                Hsum +=
+                    constraints.hamiltonian[i, 0uz, 0uz][] * constraints.hamiltonian[i, 0uz, 0uz][];
             }
             hsum_file << Hsum << std::endl;
         }
@@ -217,7 +217,8 @@ w2_bssn_uniform_grid::append_output(const real time,
             auto Msum = real{ 0 };
             for (const auto n : rv::iota(0uz, N)) {
                 for (const auto i : rv::iota(0uz, 3uz)) {
-                    Msum += constraints.momentum[n, 0uz, 0uz][i];
+                    Msum +=
+                        constraints.momentum[n, 0uz, 0uz][i] * constraints.momentum[n, 0uz, 0uz][i];
                 }
             }
             msum_file << Msum << std::endl;
