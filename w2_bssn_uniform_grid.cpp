@@ -657,8 +657,9 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
 
             co_R_ptr->for_each_index([SPTR(co_R_ptr, coconf_R_ptr, coconf_W2Rw_ptr),
                                       this](const auto idx, const auto tidx) {
-                (*co_R_ptr)[idx][tidx] = coconf_R_ptr[idx][tidx]
-                                         + (coconf_W2Rw_ptr[idx][tidx] / (W_[idx][] * W_[idx][]));
+                (*co_R_ptr)[idx][tidx] =
+                    (*coconf_R_ptr)[idx][tidx]
+                    + ((*coconf_W2Rw_ptr)[idx][tidx] / (W_[idx][] * W_[idx][]));
             });
 
             auto lapseW2R_ptr = allocate_buffer<2>(grid_size_);
@@ -838,8 +839,8 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
     { // Hamiltonian constraint
 
         auto R_ptr = allocate_buffer<0>(grid_size_);
-        R_ptr->for_each_index([SPTR(R_ptr, co_R_ptr, contra_metric_ptr)](const auto idx) {
-            u8"ij,ij"_einsum((*R_ptr)[idx], (*contra_metric_ptr)[idx], (*co_R_ptr)[idx]);
+        R_ptr->for_each_index([SPTR(R_ptr, co_R_ptr, contraconf_metric_ptr)](const auto idx) {
+            u8"ij,ij"_einsum((*R_ptr)[idx], (*contraconf_metric_ptr)[idx], (*co_R_ptr)[idx]);
         });
 
         auto AA_ptr = allocate_buffer<0>(grid_size_);
@@ -847,12 +848,13 @@ w2_bssn_uniform_grid::pre_calculations(const real km) const {
             u8"ij,ij"_einsum((*AA_ptr)[idx], (*contraconf_A_ptr)[idx], coconf_A_[idx]);
         });
 
-        constraints_ptr->hamiltonian.for_each_index([SPTR(R_ptr, AA_ptr), this](const auto idx) {
-            const auto a       = (*R_ptr)[idx][];
-            const auto b       = real{ 2 } * K_[idx][] * K_[idx][] / real{ 3 };
-            const auto c       = AA_ptr[idx][];
-            (*co_R_ptr)[idx][] = a + b - c;
-        });
+        constraints_ptr->hamiltonian.for_each_index(
+            [SPTR(R_ptr, AA_ptr, constraints_ptr), this](const auto idx) {
+                const auto a                        = (*R_ptr)[idx][] * W_[idx][] * W_[idx][];
+                const auto b                        = real{ 2 } * K_[idx][] * K_[idx][] / real{ 3 };
+                const auto c                        = (*AA_ptr)[idx][];
+                constraints_ptr->hamiltonian[idx][] = a + b - c;
+            });
     }
 
     { // momentum constraint damping
