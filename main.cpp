@@ -23,12 +23,13 @@ sycl::queue tensor_buffer_queue =
 
 int
 main(int argc, char** argv) {
-    const auto substeps      = read_env("SUBSTEPS", 2uz);
-    const auto W_clamp       = read_env("W_CLAMP", real{ 0.0001 });
-    const auto dt            = read_env("DT", real{ 0.001 });
-    const auto kreiss_coeff  = read_env("KREISS_COEFF", real{ 0.25 });
-    const auto km            = read_env("KM", real{ 0.025 });
-    const auto use_minkowski = read_env("MINKOWSKI", false);
+    const auto substeps              = read_env("SUBSTEPS", 2uz);
+    const auto W_clamp               = read_env("W_CLAMP", real{ 0.0001 });
+    const auto dt                    = read_env("DT", real{ 0.001 });
+    const auto kreiss_coeff          = read_env("KREISS_COEFF", real{ 0.25 });
+    const auto km                    = read_env("KM", real{ 0.025 });
+    const auto use_minkowski         = read_env("MINKOWSKI", false);
+    const auto algebraic_constraints = read_env("ALGEBRAIC_CONSTRAINTS", true);
 
     const auto [N, time_steps] = [&] {
         if (argc != 3) {
@@ -82,7 +83,7 @@ main(int argc, char** argv) {
         // take first substep
 
         base->clamp_W(W_clamp);
-        base->enforce_algebraic_constraints();
+        if (algebraic_constraints) { base->enforce_algebraic_constraints(); }
 
         auto iter_step = [&] {
             const auto pre1 = base->pre_calculations(km);
@@ -96,7 +97,7 @@ main(int argc, char** argv) {
         // other substeps
         for (const auto substep_ordinal : rv::iota(1uz, substeps)) {
             iter_step->clamp_W(W_clamp);
-            iter_step->enforce_algebraic_constraints();
+            if (algebraic_constraints) { iter_step->enforce_algebraic_constraints(); }
             auto pre = iter_step->pre_calculations(km);
 
             if (substep_ordinal == substeps - 1uz) {
