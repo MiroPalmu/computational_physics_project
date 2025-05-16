@@ -235,14 +235,14 @@ w2_bssn_uniform_grid::append_output(const real time,
             // g_00 grid:
 
             {
-                auto g00_file =
-                    std::fstream(output_dir_path / "g00.txt", std::ios::out | std::ios::app);
+                auto g11_file =
+                    std::fstream(output_dir_path / "g11.txt", std::ios::out | std::ios::app);
 
                 for (const auto n : rv::iota(0uz, N)) {
-                    const auto g00 = g[n, 0uz, 0uz][0, 0] * W[n, 0uz, 0uz][] * W[n, 0uz, 0uz][];
-                    g00_file << g00 << " ";
+                    const auto g11 = g[n, 0uz, 0uz][0, 0] * W[n, 0uz, 0uz][] * W[n, 0uz, 0uz][];
+                    g11_file << g11 << " ";
                 }
-                g00_file << std::endl;
+                g11_file << std::endl;
             }
 
             // lapse grid:
