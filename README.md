@@ -139,3 +139,10 @@ For example container `02da973db447` would have following prompt:
 ```shell
 root@02da973db447:~/computational_physics_project/release-build#
 ```
+
+Note that the copied data might belong to root user.
+To change the owner to `<user>`:
+
+```shell
+# chown -R <user> <DIR>
+```
