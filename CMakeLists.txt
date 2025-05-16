@@ -70,13 +70,3 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(mdspan)
 target_link_libraries(main PRIVATE std::mdspan)
-
-FetchContent_Declare(
-  glaze
-  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.1.0
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(glaze)
-
-target_link_libraries(main PRIVATE glaze::glaze)
