@@ -2,6 +2,7 @@
 
 #include "ranges.hpp"
 
+#include <cmath>
 #include <execution>
 #include <fstream>
 #include <numeric>
@@ -203,33 +204,33 @@ w2_bssn_uniform_grid::append_output(const real time,
                     std::fstream(output_dir_path / "time.txt", std::ios::out | std::ios::app);
                 time_file << time << std::endl;
             }
-            // Hamiltonian sum:
+            // Hamiltonian inf norm:
 
             {
-                auto hsum_file = std::fstream(output_dir_path / "hamiltonian_sum.txt",
-                                              std::ios::out | std::ios::app);
-                auto Hsum      = real{ 0 };
+                auto h_file = std::fstream(output_dir_path / "hamiltonian_inf_norm.txt",
+                                           std::ios::out | std::ios::app);
+                auto Hinf   = real{ 0 };
                 for (const auto i : rv::iota(0uz, N)) {
-                    Hsum += constraints.hamiltonian[i, 0uz, 0uz][]
-                            * constraints.hamiltonian[i, 0uz, 0uz][];
+                    const auto H = constraints.hamiltonian[i, 0uz, 0uz][];
+                    Hinf         = rn::max(Hinf, std::abs(H));
                 }
-                hsum_file << Hsum << std::endl;
+                h_file << Hinf << std::endl;
             }
 
-            // Momentum sum:
+            // Momentum inf norm:
 
             {
-                auto msum_file = std::fstream(output_dir_path / "momentum_sum.txt",
-                                              std::ios::out | std::ios::app);
+                auto m_file = std::fstream(output_dir_path / "momentum_inf_norm.txt",
+                                           std::ios::out | std::ios::app);
 
-                auto Msum = real{ 0 };
+                auto Minf = real{ 0 };
                 for (const auto n : rv::iota(0uz, N)) {
                     for (const auto i : rv::iota(0uz, 3uz)) {
-                        Msum += constraints.momentum[n, 0uz, 0uz][i]
-                                * constraints.momentum[n, 0uz, 0uz][i];
+                        const auto Mi = constraints.momentum[n, 0uz, 0uz][i];
+                        Minf          = rn::max(Minf, std::abs(Mi));
                     }
                 }
-                msum_file << Msum << std::endl;
+                m_file << M << std::endl;
             }
 
             // g_00 grid:
