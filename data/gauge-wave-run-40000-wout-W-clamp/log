@@ -1,0 +1,8 @@
+grid size: 128 x 1 x 1
+time steps, dt: 40000, 0.001
+implicit euler substeps: 2
+W clamp: -1
+Km (momentum damping coeff): 0.025
+Kreiss-Oliger coeff: 0.25
+Minkowski: false
+output interval: 400
