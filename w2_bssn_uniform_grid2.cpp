@@ -230,7 +230,7 @@ w2_bssn_uniform_grid::append_output(const real time,
                         Minf          = rn::max(Minf, std::abs(Mi));
                     }
                 }
-                m_file << M << std::endl;
+                m_file << Minf << std::endl;
             }
 
             // g_00 grid:
