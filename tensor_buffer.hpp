@@ -15,9 +15,6 @@
 
 #include <sycl/sycl.hpp>
 
-#include "glaze/glaze.hpp"
-#include "glaze/glaze_exceptions.hpp"
-
 #include "grid_types.hpp"
 #include "idg/sstd.hpp"
 
@@ -124,10 +121,6 @@ class tensor_buffer {
                     [=](sycl::id<3> idx) { f(grid_index{ idx[0], idx[1], idx[2] }, tidx); });
             }
         }
-    }
-
-    void write_as_beve(this auto&& self, const std::filesystem::path& name) {
-        glz::ex::write_file_beve(self.buffs_, name.native(), std::vector<std::byte>{});
     }
 };
 
